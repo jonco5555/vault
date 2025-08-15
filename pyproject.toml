@@ -7,7 +7,9 @@ authors = [
     { name = "Yonatan Cohen", email = "jonco5555@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pycryptodome>=3.23.0",
+]
 
 [project.scripts]
 vault = "vault:main"
@@ -19,4 +21,5 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
 ]
