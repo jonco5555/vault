@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package vault;
+
+service Manager {
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse);
+    rpc RetrieveSecret(RetrieveSecretRequest) returns (RetrieveSecretResponse);
+}
+
+message RegisterRequest {
+    string user_id = 1;
+}
+
+message Share {
+    int32 index = 1;
+    bytes value = 2;
+}
+
+message RegisterResponse {
+    Share share = 1;
+    bytes encryption_key = 2;
+}
+
+message StoreSecretRequest {
+    string user_id = 1;
+    string secret_id = 2;
+    bytes secret = 3;
+}
+
+message StoreSecretResponse {
+    bool success = 1;
+}
+
+message RetrieveSecretRequest {
+    string user_id = 1;
+    string secret_id = 2;
+    string auth_token = 3;
+}
+
+message RetrieveSecretResponse {
+    bytes partial_decrypted_secret = 1;
+}
+
+service Bootstrap {
+    rpc GenerateShares(GenerateSharesRequest) returns GenerateSharesResponse;
+}
+
+message GenerateSharesRequest {
+    int32 total_shares = 1;
+}
+
+message ShareWithID {
+    Share share = 1;
+    string sharee_id = 2;
+}
+
+message GenerateSharesResponse {
+    repeated ShareWithID shares = 1;
+    bytes encryption_key = 2;
+}
+
+service Sharee {
+    rpc LoadShare(LoadShareRequest) returns LoadShareResponse;
+    rpc Decrypt(DecryptRequest) returns DecryptResponse;
+}
+
+message LoadShareRequest {
+    string user_id = 1;
+    Share share = 2;
+}
+
+message DecryptRequest {
+    string user_id = 1;
+    bytes secret = 2;  // could be partial decrypted by another sharee
+}
+
+message DecryptResponse {
+    bytes partial_decrypted_secret = 1;
+}
