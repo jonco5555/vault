@@ -17,14 +17,14 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 COPY ./src/vault/__init__.py ./src/vault/__init__.py
 
+# Copy project specific files
+COPY ./src/manager ./src/vault/manager
+
 # Create environment & install dependencies
 RUN uv sync --frozen
-
-# Copy project specific files
-COPY ./src/bootstrap ./src/vault/bootstrap
 
 # Activate uv’s venv by default
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Run your app
-CMD ["python", "-m", "src.vault.bootstrap"]
+CMD ["python", "-m", "src.vault.manager"]
