@@ -43,7 +43,7 @@ message RetrieveSecretResponse {
 }
 
 service Bootstrap {
-    rpc GenerateShares(GenerateSharesRequest) returns GenerateSharesResponse;
+    rpc GenerateShares(GenerateSharesRequest) returns (GenerateSharesResponse);
 }
 
 message GenerateSharesRequest {
@@ -61,13 +61,17 @@ message GenerateSharesResponse {
 }
 
 service Sharee {
-    rpc LoadShare(LoadShareRequest) returns LoadShareResponse;
-    rpc Decrypt(DecryptRequest) returns DecryptResponse;
+    rpc LoadShare(LoadShareRequest) returns (LoadShareResponse);
+    rpc Decrypt(DecryptRequest) returns (DecryptResponse);
 }
 
 message LoadShareRequest {
     string user_id = 1;
     Share share = 2;
+}
+
+message LoadShareResponse {
+    bool success = 1;
 }
 
 message DecryptRequest {
