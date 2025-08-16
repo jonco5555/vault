@@ -11,6 +11,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     "grpcio>=1.74.0",
     "grpcio-tools>=1.74.0",
+    "docker>=7.1.0",
     "pycryptodome>=3.23.0",
     "sqlalchemy>=2.0.43",
 ]

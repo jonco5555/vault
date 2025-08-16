@@ -525,6 +525,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
+    { name = "docker" },
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "pycryptodome" },
@@ -542,6 +543,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.30.0" },
+    { name = "docker", specifier = ">=7.1.0" },
     { name = "grpcio", specifier = ">=1.74.0" },
     { name = "grpcio-tools", specifier = ">=1.74.0" },
     { name = "pycryptodome", specifier = ">=3.23.0" },
