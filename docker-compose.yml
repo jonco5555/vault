@@ -1,0 +1,7 @@
+#version: '3.8' # Specify the Docker Compose file format version
+
+services:
+  bootstrap:
+    build:
+      context: . # Path to the client's source code
+      dockerfile: src/bootstrap/Dockerfile # Dockerfile to use for building the client image
