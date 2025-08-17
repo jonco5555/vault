@@ -25,4 +25,5 @@ build-backend = "uv_build"
 dev = [
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
+    "testcontainers[postgres]>=4.12.0",
 ]
