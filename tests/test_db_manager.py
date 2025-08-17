@@ -1,6 +1,6 @@
 import pytest
 from testcontainers.postgres import PostgresContainer
-from src.vault.db_manager import DBManager
+from vault.db_manager import DBManager
 
 
 @pytest.fixture(scope="module")
