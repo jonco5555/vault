@@ -8,8 +8,9 @@ from vault.db_manager import DBManager
 async def db_manager():
     with PostgresContainer("postgres:16") as container:
         db_url = container.get_connection_url().replace(
-            "postgresql://", "postgresql+asyncpg://", 1
+            "postgresql+psycopg2://", "postgresql+asyncpg://", 1
         )
+        print(f"Using database URL: {db_url}")
         db = DBManager(db_url)
         await db.start()
         yield db
