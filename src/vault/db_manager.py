@@ -30,7 +30,9 @@ class PubKey(Base):
 class DBManager:
     def __init__(self, db_url: str):
         self._logger = logging.getLogger(__class__.__name__)
-        self._engine = create_async_engine(db_url, echo=True, poolclass=NullPool)
+        self._engine = create_async_engine(
+            db_url, echo=True, poolclass=NullPool
+        )  # TODO: Using NullPool made the tests pass, need to investigate
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
 
     async def start(self):
