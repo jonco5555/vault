@@ -1,33 +1,37 @@
-from sqlalchemy import Column, String, LargeBinary, select
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import select
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.ext.asyncio import AsyncAttrs
 import logging
 
-Base = declarative_base()
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
+
+
 class Vault(Base):
     __tablename__ = "vault"
-    user_id = Column(String, primary_key=True)
-    secret_id = Column(String, primary_key=True)
-    secret = Column(LargeBinary, nullable=False)
+    user_id: Mapped[str] = mapped_column(primary_key=True)
+    secret_id: Mapped[str] = mapped_column(primary_key=True)
+    secret: Mapped[bytes] = mapped_column()
 
 
 class PubKey(Base):
     __tablename__ = "pubkeys"
-    user_id = Column(String, primary_key=True)
-    public_key = Column(LargeBinary, nullable=False)
+    user_id: Mapped[str] = mapped_column(primary_key=True)
+    public_key: Mapped[bytes] = mapped_column()
 
 
 class DBManager:
     def __init__(self, db_url: str):
         self._logger = logging.getLogger(__class__.__name__)
         self._engine = create_async_engine(db_url, echo=True)
-        Base.metadata.create_all(self._engine)
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
 
     async def start(self):
