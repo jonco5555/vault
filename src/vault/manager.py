@@ -21,18 +21,17 @@ class Manager(ManagerServicer):
         self._logger = logging.getLogger(__class__.__name__)
         # grpc server
         self._port = port
-        self._server = None
-
-        # DB
-        self._db_base_url = (
-            f"postgresql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
-        )
-        self._db = DBManager(self._db_base_url)
-
-    async def start(self):
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
         self._server.add_insecure_port(f"[::]:{self._port}")
+
+        # DB
+        self._db = DBManager(
+            f"postgresql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
+        )
+
+    async def start(self):
+        await self._db.start()
         await self._server.start()
         self._logger.info(f"Manager started on port {self._port}")
 
