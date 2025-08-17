@@ -27,7 +27,7 @@ class Manager(ManagerServicer):
 
         # DB
         self._db = DBManager(
-            f"postgresql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
+            f"postgresql+asyncpg://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
         )
 
     async def start(self):
