@@ -14,6 +14,7 @@ async def db_manager():
         db = DBManager(db_url)
         await db.start()
         yield db
+        await db.close()
 
 
 @pytest.mark.asyncio

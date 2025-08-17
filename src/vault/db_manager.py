@@ -2,7 +2,6 @@ from sqlalchemy import select
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.ext.asyncio import AsyncAttrs
 import logging
 
 
@@ -11,7 +10,7 @@ logging.basicConfig(
 )
 
 
-class Base(AsyncAttrs, DeclarativeBase):
+class Base(DeclarativeBase):
     pass
 
 
@@ -37,7 +36,12 @@ class DBManager:
     async def start(self):
         self._logger.info("Creating Tables")
         async with self._engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
+
+    async def close(self):
+        self._logger.info("Stopping DBManager")
+        await self._engine.dispose()
 
     async def add_secret(self, user_id: str, secret_id: str, secret: bytes):
         self._logger.info(f"Adding secret for user_id={user_id}, secret_id={secret_id}")
