@@ -1,1 +1,1 @@
-![](Design.excalidraw)
+![](design.excalidraw.png)
