@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import NullPool, select
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -30,13 +30,12 @@ class PubKey(Base):
 class DBManager:
     def __init__(self, db_url: str):
         self._logger = logging.getLogger(__class__.__name__)
-        self._engine = create_async_engine(db_url, echo=True)
+        self._engine = create_async_engine(db_url, echo=True, poolclass=NullPool)
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
 
     async def start(self):
         self._logger.info("Creating Tables")
         async with self._engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
 
     async def close(self):
