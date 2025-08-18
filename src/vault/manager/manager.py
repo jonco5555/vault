@@ -1,5 +1,5 @@
-from vault.db_manager import DBManager
-from vault.vault_pb2_grpc import ManagerServicer, add_ManagerServicer_to_server
+from vault.manager.db_manager import DBManager
+from vault.grpc.vault_pb2_grpc import ManagerServicer, add_ManagerServicer_to_server
 import logging
 import grpc
 

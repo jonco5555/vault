@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 from testcontainers.postgres import PostgresContainer
-from vault.db_manager import DBManager
+from vault.manager.db_manager import DBManager
 
 
 @pytest_asyncio.fixture(scope="module")

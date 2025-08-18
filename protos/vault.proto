@@ -10,6 +10,7 @@ service Manager {
 
 message RegisterRequest {
     string user_id = 1;
+    bytes user_public_key = 2;
 }
 
 message Share {
@@ -48,6 +49,7 @@ service Bootstrap {
 
 message GenerateSharesRequest {
     int32 total_shares = 1;
+    bytes user_public_key = 2;
 }
 
 message ShareWithID {

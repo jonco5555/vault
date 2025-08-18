@@ -1,5 +1,5 @@
 import pytest
-from vault.shamir import SharesManager
+from vault.crypto.shamir import SharesManager
 
 
 def test_split_secret_valid():
