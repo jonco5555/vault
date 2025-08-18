@@ -48,7 +48,7 @@ service Bootstrap {
 }
 
 message GenerateSharesRequest {
-    int32 total_shares = 1;
+    int32 num_of_shares = 1;
     bytes user_public_key = 2;
 }
 

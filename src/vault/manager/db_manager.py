@@ -73,3 +73,9 @@ class DBManager:
         async with self._session() as session:
             result = await session.execute(select(PubKey).filter_by(user_id=user_id))
             return result.scalars().first()
+
+    async def user_exists(self, user_id: str) -> bool:
+        self._logger.info(f"Checking if user exists: {user_id}")
+        async with self._session() as session:
+            result = await session.execute(select(PubKey).filter_by(user_id=user_id))
+            return result.scalars().first() is not None

@@ -37,3 +37,19 @@ async def test_add_and_get_pubkey(db_manager: DBManager):
     result = await db_manager.get_pubkey(user_id)
     assert result.user_id == user_id
     assert result.public_key == pubkey
+
+
+@pytest.mark.asyncio
+async def test_user_exists_true(db_manager: DBManager):
+    user_id = "user3"
+    pubkey = b"pubkeyexists"
+    await db_manager.add_pubkey(user_id, pubkey)
+    exists = await db_manager.user_exists(user_id)
+    assert exists is True
+
+
+@pytest.mark.asyncio
+async def test_user_exists_false(db_manager: DBManager):
+    user_id = "nonexistent_user"
+    exists = await db_manager.user_exists(user_id)
+    assert exists is False

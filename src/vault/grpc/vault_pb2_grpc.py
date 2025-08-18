@@ -2,7 +2,6 @@
 """Client and server classes corresponding to protobuf-defined services."""
 
 import grpc
-
 import vault.grpc.vault_pb2 as vault__pb2
 
 GRPC_GENERATED_VERSION = "1.74.0"
