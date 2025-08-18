@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package vault;
+
+service SetupMaster {
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc Unregister(UnregisterRequest) returns (UnregisterResponse);
+}
+
+
+enum ServiceType {
+    SHARE_SERVER = 0;
+    BOOSTRAP_SERVER = 1;
+}
+
+message RegisterRequest {
+    ServiceType type = 1;
+    string container_id = 2;
+    string ip_address = 3;
+    optional bytes public_key = 4;
+}
+
+message RegisterResponse {
+    bool is_registered = 1;
+}
+
+message UnregisterRequest {
+    string container_id = 1;
+}
+
+message UnregisterResponse {
+    bool is_unregistered = 1;
+}
