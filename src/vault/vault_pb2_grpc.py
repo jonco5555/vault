@@ -276,7 +276,7 @@ class Bootstrap(object):
         )
 
 
-class ShareeStub(object):
+class ShareServerStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -286,20 +286,20 @@ class ShareeStub(object):
             channel: A grpc.Channel.
         """
         self.LoadShare = channel.unary_unary(
-            "/vault.Sharee/LoadShare",
+            "/vault.ShareServer/LoadShare",
             request_serializer=vault__pb2.LoadShareRequest.SerializeToString,
             response_deserializer=vault__pb2.LoadShareResponse.FromString,
             _registered_method=True,
         )
         self.Decrypt = channel.unary_unary(
-            "/vault.Sharee/Decrypt",
+            "/vault.ShareServer/Decrypt",
             request_serializer=vault__pb2.DecryptRequest.SerializeToString,
             response_deserializer=vault__pb2.DecryptResponse.FromString,
             _registered_method=True,
         )
 
 
-class ShareeServicer(object):
+class ShareServerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def LoadShare(self, request, context):
@@ -315,7 +315,7 @@ class ShareeServicer(object):
         raise NotImplementedError("Method not implemented!")
 
 
-def add_ShareeServicer_to_server(servicer, server):
+def add_ShareServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
         "LoadShare": grpc.unary_unary_rpc_method_handler(
             servicer.LoadShare,
@@ -329,14 +329,14 @@ def add_ShareeServicer_to_server(servicer, server):
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "vault.Sharee", rpc_method_handlers
+        "vault.ShareServer", rpc_method_handlers
     )
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers("vault.Sharee", rpc_method_handlers)
+    server.add_registered_method_handlers("vault.ShareServer", rpc_method_handlers)
 
 
 # This class is part of an EXPERIMENTAL API.
-class Sharee(object):
+class ShareServer(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -355,7 +355,7 @@ class Sharee(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/vault.Sharee/LoadShare",
+            "/vault.ShareServer/LoadShare",
             vault__pb2.LoadShareRequest.SerializeToString,
             vault__pb2.LoadShareResponse.FromString,
             options,
@@ -385,7 +385,7 @@ class Sharee(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/vault.Sharee/Decrypt",
+            "/vault.ShareServer/Decrypt",
             vault__pb2.DecryptRequest.SerializeToString,
             vault__pb2.DecryptResponse.FromString,
             options,
