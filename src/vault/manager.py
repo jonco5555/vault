@@ -35,7 +35,8 @@ class Manager(ManagerServicer):
         await self._server.start()
         self._logger.info(f"Manager started on port {self._port}")
 
-    async def stop(self):
+    async def close(self):
+        self._db.close()
         if self._server:
             await self._server.stop(grace=5.0)
         self._logger.info("Manager stopped")
