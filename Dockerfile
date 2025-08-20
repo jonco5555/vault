@@ -21,10 +21,7 @@ COPY ./src/vault/__init__.py ./src/vault/__init__.py
 RUN uv sync --frozen
 
 # Copy project specific files
-COPY ./src/bootstrap ./src/vault/bootstrap
+COPY ./src ./src
 
 # Activate uv’s venv by default
 ENV PATH="/app/.venv/bin:$PATH"
-
-# Run your app
-CMD ["python", "-m", "src.vault.bootstrap"]
