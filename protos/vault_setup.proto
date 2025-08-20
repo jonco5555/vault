@@ -13,11 +13,15 @@ enum ServiceType {
     BOOSTRAP_SERVER = 1;
 }
 
-message RegisterRequest {
+message ServiceData {
     ServiceType type = 1;
     string container_id = 2;
     string ip_address = 3;
     optional bytes public_key = 4;
+}
+
+message RegisterRequest {
+    ServiceData server_data = 1;
 }
 
 message RegisterResponse {

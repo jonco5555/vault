@@ -4,12 +4,14 @@ services:
   bootstrap:
     build:
       context: . # Path to the client's source code
-      dockerfile: src/bootstrap/Dockerfile # Dockerfile to use for building the client image
+      dockerfile: Dockerfile # Dockerfile to use for building the client image
+    command: ["python", "-m", "src.bootstrap"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   manager:
     build:
       context: . # Path to the client's source code
-      dockerfile: src/manager/Dockerfile # Dockerfile to use for building the client image
+      dockerfile: Dockerfile # Dockerfile to use for building the client image
+    command: ["python", "-m", "src.manager"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

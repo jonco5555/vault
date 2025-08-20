@@ -526,10 +526,12 @@ source = { editable = "." }
 dependencies = [
     { name = "asyncpg" },
     { name = "docker" },
+    { name = "greenlet" },
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "pycryptodome" },
     { name = "sqlalchemy" },
+    { name = "testcontainers" },
 ]
 
 [package.dev-dependencies]
@@ -544,10 +546,12 @@ dev = [
 requires-dist = [
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "docker", specifier = ">=7.1.0" },
+    { name = "greenlet", specifier = ">=3.2.4" },
     { name = "grpcio", specifier = ">=1.74.0" },
     { name = "grpcio-tools", specifier = ">=1.74.0" },
     { name = "pycryptodome", specifier = ">=3.23.0" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
+    { name = "testcontainers", specifier = ">=4.12.0" },
 ]
 
 [package.metadata.requires-dev]
