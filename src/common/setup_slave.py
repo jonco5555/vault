@@ -1,29 +1,53 @@
 import grpc
-from typing import Optional
 
 from common.generated import vault_setup_pb2
 from common.generated import vault_setup_pb2_grpc
-
+from common.constants import SETUP_MASTER_PORT
+from common import docker_utils
 
 class SetupSlave:
-    def __init__(self, setup_master_address: str, setup_master_port: int):
-        self.setup_master_address = setup_master_address
-        self.setup_master_port = setup_master_port
+    def __init__(self, service_type: vault_setup_pb2.ServiceType, setup_master_address: str):
+        self._setup_master_address = setup_master_address
+        self._setup_master_port = SETUP_MASTER_PORT
+        self._service_type = service_type
 
-    async def register(self, service_data: vault_setup_pb2.ServiceData):
-        _address = f'{self.setup_master_address}:{self.setup_master_port}'
+    async def register(self):
+        service_data = vault_setup_pb2.ServiceData()
+        service_data.type = self._service_type
+        service_data.container_id = docker_utils.get_self_container_id()
+        service_data.ip_address = docker_utils.get_container_address(self.service_data.container_id)
+        
+        #TODO: generate real private & public key
+        service_data.public_key = b"blabla"
+
+        self._register(service_data)
+    
+    async def unregister(self):
+        self._unregister(docker_utils.get_self_container_id())
+
+    #TODO
+    def get_public_key():
+        pass
+
+    #TODO
+    def get_private_key():
+        pass
+
+    # Private methods
+    async def _register(self, service_data: vault_setup_pb2.ServiceData):
+        _address = f'{self._setup_master_address}:{self._setup_master_port}'
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = vault_setup_pb2_grpc.SetupMasterStub(channel)
             resp : vault_setup_pb2.RegisterResponse = await stub.Register(
                 vault_setup_pb2.RegisterRequest(service_data=service_data))
             if not resp.is_registered:
-                raise RuntimeError(f"could not register container_id {container_id} of type {type}")
-    
-    async def unregister(self, container_id: str):
-        _address = f'{self.setup_master_address}:{self.setup_master_port}'
+                raise RuntimeError(f"could not register container_id {service_data.container_id} of type {service_data.type}")
+
+    async def _unregister(self, container_id: str):
+        _address = f'{self._setup_master_address}:{self._setup_master_port}'
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = vault_setup_pb2_grpc.SetupMasterStub(channel)
             resp : vault_setup_pb2.UnregisterResponse = await stub.Unregister(
-                vault_setup_pb2.UnregisterRequest(type=type, container_id=container_id, container_ip=container_ip, public_key=public_key))
-            if not resp.is_registered:
+                vault_setup_pb2.UnregisterRequest(container_id=container_id))
+            if not resp.is_unregistered:
                 raise RuntimeError(f"could not unregister container_id {container_id}")

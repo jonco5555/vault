@@ -24,25 +24,25 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11vault_setup.proto\x12\x05vault\"\x81\x01\n\x0bServiceData\x12 \n\x04type\x18\x01 \x01(\x0e\x32\x12.vault.ServiceType\x12\x14\n\x0c\x63ontainer_id\x18\x02 \x01(\t\x12\x12\n\nip_address\x18\x03 \x01(\t\x12\x17\n\npublic_key\x18\x04 \x01(\x0cH\x00\x88\x01\x01\x42\r\n\x0b_public_key\":\n\x0fRegisterRequest\x12\'\n\x0bserver_data\x18\x01 \x01(\x0b\x32\x12.vault.ServiceData\")\n\x10RegisterResponse\x12\x15\n\ris_registered\x18\x01 \x01(\x08\")\n\x11UnregisterRequest\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\t\"-\n\x12UnregisterResponse\x12\x17\n\x0fis_unregistered\x18\x01 \x01(\x08*4\n\x0bServiceType\x12\x10\n\x0cSHARE_SERVER\x10\x00\x12\x13\n\x0f\x42OOSTRAP_SERVER\x10\x01\x32\x8d\x01\n\x0bSetupMaster\x12;\n\x08Register\x12\x16.vault.RegisterRequest\x1a\x17.vault.RegisterResponse\x12\x41\n\nUnregister\x12\x18.vault.UnregisterRequest\x1a\x19.vault.UnregisterResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11vault_setup.proto\x12\x05vault\"\x81\x01\n\x0bServiceData\x12 \n\x04type\x18\x01 \x01(\x0e\x32\x12.vault.ServiceType\x12\x14\n\x0c\x63ontainer_id\x18\x02 \x01(\t\x12\x12\n\nip_address\x18\x03 \x01(\t\x12\x17\n\npublic_key\x18\x04 \x01(\x0cH\x00\x88\x01\x01\x42\r\n\x0b_public_key\";\n\x0fRegisterRequest\x12(\n\x0cservice_data\x18\x01 \x01(\x0b\x32\x12.vault.ServiceData\")\n\x10RegisterResponse\x12\x15\n\ris_registered\x18\x01 \x01(\x08\")\n\x11UnregisterRequest\x12\x14\n\x0c\x63ontainer_id\x18\x01 \x01(\t\"-\n\x12UnregisterResponse\x12\x17\n\x0fis_unregistered\x18\x01 \x01(\x08*4\n\x0bServiceType\x12\x10\n\x0cSHARE_SERVER\x10\x00\x12\x13\n\x0f\x42OOSTRAP_SERVER\x10\x01\x32\x8d\x01\n\x0bSetupMaster\x12;\n\x08Register\x12\x16.vault.RegisterRequest\x1a\x17.vault.RegisterResponse\x12\x41\n\nUnregister\x12\x18.vault.UnregisterRequest\x1a\x19.vault.UnregisterResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'vault_setup_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SERVICETYPE']._serialized_start=353
-  _globals['_SERVICETYPE']._serialized_end=405
+  _globals['_SERVICETYPE']._serialized_start=354
+  _globals['_SERVICETYPE']._serialized_end=406
   _globals['_SERVICEDATA']._serialized_start=29
   _globals['_SERVICEDATA']._serialized_end=158
   _globals['_REGISTERREQUEST']._serialized_start=160
-  _globals['_REGISTERREQUEST']._serialized_end=218
-  _globals['_REGISTERRESPONSE']._serialized_start=220
-  _globals['_REGISTERRESPONSE']._serialized_end=261
-  _globals['_UNREGISTERREQUEST']._serialized_start=263
-  _globals['_UNREGISTERREQUEST']._serialized_end=304
-  _globals['_UNREGISTERRESPONSE']._serialized_start=306
-  _globals['_UNREGISTERRESPONSE']._serialized_end=351
-  _globals['_SETUPMASTER']._serialized_start=408
-  _globals['_SETUPMASTER']._serialized_end=549
+  _globals['_REGISTERREQUEST']._serialized_end=219
+  _globals['_REGISTERRESPONSE']._serialized_start=221
+  _globals['_REGISTERRESPONSE']._serialized_end=262
+  _globals['_UNREGISTERREQUEST']._serialized_start=264
+  _globals['_UNREGISTERREQUEST']._serialized_end=305
+  _globals['_UNREGISTERRESPONSE']._serialized_start=307
+  _globals['_UNREGISTERRESPONSE']._serialized_end=352
+  _globals['_SETUPMASTER']._serialized_start=409
+  _globals['_SETUPMASTER']._serialized_end=550
 # @@protoc_insertion_point(module_scope)

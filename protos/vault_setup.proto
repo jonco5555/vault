@@ -21,7 +21,7 @@ message ServiceData {
 }
 
 message RegisterRequest {
-    ServiceData server_data = 1;
+    ServiceData service_data = 1;
 }
 
 message RegisterResponse {
