@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import vault_setup_pb2 as vault__setup__pb2
+import common.generated.vault_setup_pb2 as vault__setup__pb2
 
 GRPC_GENERATED_VERSION = '1.73.1'
 GRPC_VERSION = grpc.__version__
