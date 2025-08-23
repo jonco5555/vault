@@ -6,6 +6,7 @@ import logging
 
 from typing import Optional
 from common.generated import vault_setup_pb2
+from common import types
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -38,11 +39,19 @@ class Server(Base):
 class DBManager:
     def __init__(self, db_url: str):
         self._logger = logging.getLogger(__class__.__name__)
+        self._logger.info(f"initializing with {db_url=}")
         self._engine = create_async_engine(
             db_url, echo=True, poolclass=NullPool
         )  # TODO: Using NullPool made the tests pass, need to investigate
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
 
+    @classmethod
+    async def create(cls, db_url: str):
+        retval = cls(db_url=db_url)
+        await retval.start()
+
+        return retval
+    
     async def start(self):
         self._logger.info("Creating Tables")
         async with self._engine.begin() as conn:
@@ -82,12 +91,9 @@ class DBManager:
             result = await session.execute(select(PubKey).filter_by(user_id=user_id))
             return result.scalars().first()
         
-    async def add_server(self, register_request: vault_setup_pb2.ServiceData):
+    async def add_server(self, register_request: types.ServiceData):
         self._logger.info(f"Adding server with container_id={register_request.container_id}")
         async with self._session() as session:
-            pubkey: Optional[bytes] = None
-            if register_request.HasField("public_key"):
-                pubkey = register_request.public_key
             entry = Server(container_id=register_request.container_id,
                            type=register_request.type,
                            ip_address=register_request.ip_address,
@@ -105,19 +111,19 @@ class DBManager:
             await session.delete(row)
             await session.commit()
 
-    async def get_server(self, container_id: str) -> Optional[vault_setup_pb2.ServiceData]:
+    async def get_server(self, container_id: str) -> Optional[types.ServiceData]:
         self._logger.info(f"Retrieving server data for container_id={container_id}")
         async with self._session() as session:
             result = await session.get(Server, container_id)
             
-            retval: Optional[vault_setup_pb2.ServiceData] = None
+            retval: Optional[types.ServiceData] = None
             if result:
-                retval = vault_setup_pb2.ServiceData()
-                retval.container_id = result.container_id
-                retval.type = result.type
-                retval.ip_address = result.ip_address
-                if result.public_key:
-                    retval.public_key = result.public_key
+                retval = types.ServiceData(
+                    container_id = result.container_id,
+                    type = result.type,
+                    ip_address = result.ip_address,
+                    public_key = result.public_key,
+                )
 
             return retval
 
