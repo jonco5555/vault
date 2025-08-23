@@ -1,24 +1,31 @@
 import asyncio
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import grpc
 from concurrent import futures
 import weakref
 
 from common import docker_utils
+from common import types
+
 from common.generated import vault_setup_pb2
 from common.generated import vault_setup_pb2_grpc
+from common import types
 from common.constants import (
     SETUP_MASTER_PORT,
-    IMAGE_NAME,
-    SHARE_SERVER_COMMAND,
-    BOOTSTRAP_SERVER_COMMAND
+    DOCKER_IMAGE_NAME,
+    DOCKER_SHARE_SERVER_COMMAND,
+    DOCKER_BOOTSTRAP_SERVER_COMMAND
     )
 
 #TODO: move db manager to be in manager directory
 from vault.db_manager import DBManager
 
 class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
-    def __init__(self, db: DBManager, server_ip: str = "[::]"):
+    def __init__(
+            self,
+            db: DBManager,
+            server_ip: str = "[::]",
+            ):
         vault_setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
         self._wait_for_container_id_condition = asyncio.Condition()
@@ -27,20 +34,32 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
         self._is_setup_finished_lock = asyncio.Lock()
 
         self._server_ip = server_ip
-        self._running_server_task = asyncio.create_task(self._start_setup_master_server(server_ip))
+        self._running_server_task = asyncio.create_task(self._start_setup_master_server(self._server_ip))
         weakref.finalize(self, self.cleanup)
 
+        self.bootstrap_idx = 0
+        self.share_server_idx = 0
+
+    @classmethod
+    async def create(cls, db: DBManager, server_ip: str = "[::]"):
+        retval = cls(db=db, server_ip=server_ip)
+        await asyncio.sleep(0) # start grpc server!
+        
+        return retval
+    
     def cleanup(self):
         self._running_server_task.cancel()
 
     # vault_setup_pb2_grpc.SetupMaster inherited methods
     async def Register(self, request: vault_setup_pb2.RegisterRequest, context):
-        await self._db.add_server(request.service_data)
+        print("in Register!", flush=True)
+        await self._db.add_server(types.RegisterRequest_to_ServiceData(request))
         async with self._wait_for_container_id_condition:
             self._wait_for_container_id_condition.notify_all()
         return vault_setup_pb2.RegisterResponse(is_registered=True)
     
     async def Unregister(self, request: vault_setup_pb2.UnregisterRequest, context):
+        print("in Unregister!", flush=True)
         is_unregistered = False
         try:
             await self._db.remove_server(request.container_id)
@@ -54,8 +73,8 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
     # API method
     async def do_setup(self, share_servers_num: int):
         for i in range(share_servers_num):
-            print(f"spawaning shareServer {i}")
-            #TODO
+            print(f"spawning shareServer {i}")
+            self._spawn_share_server()
         async with self._is_setup_finished_lock:
             self._is_setup_finished = True
 
@@ -63,15 +82,23 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
         async with self._is_setup_finished_lock:
             return self._is_setup_finished
 
-    async def spawn_bootstrap_server(self) -> vault_setup_pb2.ServiceData:
-        container = await docker_utils.spawn_container(IMAGE_NAME, command=BOOTSTRAP_SERVER_COMMAND)
-        return await self._wait_for_container_id_registration(container.id)
+    async def spawn_bootstrap_server(self):
+        self.bootstrap_idx+=1
+        print("spawn_container", flush=True)
+        container = docker_utils.spawn_container(
+            DOCKER_IMAGE_NAME,
+            container_name=f"vault-bootstrap-{self.bootstrap_idx}",
+            command=DOCKER_BOOTSTRAP_SERVER_COMMAND
+            )
+        print("waiting for registration", flush=True)
+        service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
+        return service_data
 
     async def kill_server(self, container_id: str):
         #TODO
         pass
     
-    async def get_all_share_servers(self) -> List[vault_setup_pb2.ServiceData]:
+    async def get_all_share_servers(self) -> List[types.ServiceData]:
         #TODO        
         pass
 
@@ -88,14 +115,20 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
             print("Stoppig setup master service...")
             await server.stop(grace=10) # grace period of 10 seconds
 
-    async def _spawn_share_server():
-        docker_utils.spawn_container(IMAGE_NAME, command=SHARE_SERVER_COMMAND)
+    async def _spawn_share_server(self):
+        self.share_server_idx+=1
+        container = docker_utils.spawn_container(
+            DOCKER_IMAGE_NAME,
+            container_name=f"vault-share-{self.bootstrap_idx}",
+            command=DOCKER_SHARE_SERVER_COMMAND
+            )
+        service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
+        return service_data
 
-    async def _get_container_data(self, container_id: str) -> Optional[vault_setup_pb2.ServiceData]:
+    async def _get_container_data(self, container_id: str) -> Optional[types.ServiceData]:
         return await self._db.get_server(container_id)
 
-    async def _wait_for_container_id_registration(self, container_id: str, timeout_s: int = 10) -> vault_setup_pb2.ServiceData:
-        check_interval_s = min(timeout_s, 3)
+    async def _wait_for_container_id_registration(self, container_id: str, timeout_s: int = 10) -> types.ServiceData:
         start_time = asyncio.get_event_loop().time()
         while True:
             retval = await self._get_container_data(container_id)
@@ -107,18 +140,15 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
             remaining_s = timeout_s - elapsed
             if remaining_s <= 0:
                 raise TimeoutError(f"container_id '{container_id}' did not appear in DB within {timeout_s}s")
-
-            # wait for either condition notification or timeout slice
-            wait_time_s = min(check_interval_s, remaining_s)
+            
             async with self._wait_for_container_id_condition:
                 try:
-                    await asyncio.wait_for(self._wait_for_container_id_condition.wait(), timeout=wait_time_s)
+                    await asyncio.wait_for(self._wait_for_container_id_condition.wait(), timeout=remaining_s)
                     print("Woke up by notification, rechecking DB...")
                 except asyncio.TimeoutError:
                     print(f"No notification in {remaining_s}s, rechecking DB...")
 
     async def _wait_for_container_id_unregistration(self, container_id: str, timeout_s: int = 10):
-        check_interval_s = min(timeout_s, 3)
         start_time = asyncio.get_event_loop().time()
         while True:
             retval = await self._get_container_data(container_id)
@@ -131,11 +161,9 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
             if remaining_s <= 0:
                 raise TimeoutError(f"container_id '{container_id}' appears in DB within {timeout_s}s")
 
-            # wait for either condition notification or timeout slice
-            wait_time_s = min(check_interval_s, remaining_s)
             async with self._wait_for_container_id_condition:
                 try:
-                    await asyncio.wait_for(self._wait_for_container_id_condition.wait(), timeout=wait_time_s)
+                    await asyncio.wait_for(self._wait_for_container_id_condition.wait(), timeout=remaining_s)
                     print("Woke up by notification, rechecking DB...")
                 except asyncio.TimeoutError:
                     print(f"No notification in {remaining_s}s, rechecking DB...")

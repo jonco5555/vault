@@ -1,12 +1,12 @@
 
 import pytest
 import pytest_asyncio
-import asyncio
+import os
 from testcontainers.postgres import PostgresContainer
 from vault.db_manager import DBManager
-from common.generated import vault_setup_pb2
 
-from common.setup_slave import SetupSlave
+from common import types
+from common.setup_unit import SetupUnit
 from manager.setup_master import SetupMaster
 
 @pytest_asyncio.fixture(scope="module")
@@ -22,30 +22,52 @@ async def db_manager():
         await db.close()
 
 @pytest.mark.asyncio
-async def test_setup_master_slave(db_manager: DBManager):
+async def test_setup_private_api(db_manager: DBManager):
     local_server_address = "127.0.0.1"
 
     setup_master = SetupMaster(
         db = db_manager,
         server_ip = local_server_address,
         )
-    setup_slave = SetupSlave(
-        service_type = vault_setup_pb2.ServiceType.BOOSTRAP_SERVER,
+    setup_slave = SetupUnit(
+        service_type = types.ServiceType.BOOSTRAP_SERVER,
         setup_master_address = local_server_address,
         )
 
     _container_id = "blabla"
-    setup_slave_data = vault_setup_pb2.ServiceData()
-    setup_slave_data.type = vault_setup_pb2.ServiceType.BOOSTRAP_SERVER
-    setup_slave_data.container_id = _container_id
-    setup_slave_data.ip_address = "1.2.3.4"
-    setup_slave_data.public_key = b"blabla"
+    setup_slave_data = types.ServiceData(
+        type = types.ServiceType.BOOSTRAP_SERVER,
+        container_id = _container_id,
+        ip_address = "1.2.3.4",
+        public_key = b"blabla",
+    )
 
     await setup_master._wait_for_container_id_unregistration(container_id=_container_id, timeout_s=3)
 
     await setup_slave._register(setup_slave_data)
-    registered_data: vault_setup_pb2.ServiceData = await setup_master._wait_for_container_id_registration(container_id=_container_id, timeout_s=3)
+    registered_data: types.ServiceData = await setup_master._wait_for_container_id_registration(container_id=_container_id, timeout_s=3)
     assert registered_data.container_id == _container_id
 
     await setup_slave._unregister(_container_id)
     await setup_master._wait_for_container_id_unregistration(container_id=_container_id, timeout_s=3)
+
+@pytest.mark.skipif(os.geteuid() != 0, reason="Requires root privileges")
+@pytest.mark.asyncio
+async def test_setup_public_api(db_manager: DBManager):
+    local_server_address = "127.0.0.1"
+
+    setup_master = SetupMaster(
+        db = db_manager,
+        server_ip = local_server_address,
+        )
+    
+    service_date, container = setup_master.spawn_bootstrap_server()
+
+    # Wait for container to finish and get logs
+    container.wait()
+    print(container.logs().decode("utf-8"))
+
+    # Optionally remove container
+    container.remove()
+
+    setup_master._wait_for_container_id_unregistration(service_date.container_id)
