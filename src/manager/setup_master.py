@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional, List, Tuple
+from typing import Optional, List
 import grpc
 from concurrent import futures
 import weakref
@@ -7,11 +7,12 @@ import weakref
 from common import docker_utils
 from common import types
 
-from common.generated import vault_setup_pb2
-from common.generated import vault_setup_pb2_grpc
+from google.protobuf.empty_pb2 import Empty
+from common.generated import setup_pb2
+from common.generated import setup_pb2_grpc
 from common import types
 from common.constants import (
-    SETUP_MASTER_PORT,
+    SETUP_PORT,
     DOCKER_IMAGE_NAME,
     DOCKER_SHARE_SERVER_COMMAND,
     DOCKER_BOOTSTRAP_SERVER_COMMAND
@@ -20,13 +21,13 @@ from common.constants import (
 #TODO: move db manager to be in manager directory
 from vault.db_manager import DBManager
 
-class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
+class SetupMaster(setup_pb2_grpc.SetupMaster):
     def __init__(
             self,
             db: DBManager,
             server_ip: str = "[::]",
             ):
-        vault_setup_pb2_grpc.SetupMaster.__init__(self)
+        setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
         self._wait_for_container_id_condition = asyncio.Condition()
 
@@ -50,15 +51,15 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
     def cleanup(self):
         self._running_server_task.cancel()
 
-    # vault_setup_pb2_grpc.SetupMaster inherited methods
-    async def Register(self, request: vault_setup_pb2.RegisterRequest, context):
+    # setup_pb2_grpc.SetupMaster inherited methods
+    async def Register(self, request: setup_pb2.RegisterRequest, context):
         print("in Register!", flush=True)
         await self._db.add_server(types.RegisterRequest_to_ServiceData(request))
         async with self._wait_for_container_id_condition:
             self._wait_for_container_id_condition.notify_all()
-        return vault_setup_pb2.RegisterResponse(is_registered=True)
+        return setup_pb2.RegisterResponse(is_registered=True)
     
-    async def Unregister(self, request: vault_setup_pb2.UnregisterRequest, context):
+    async def Unregister(self, request: setup_pb2.UnregisterRequest, context):
         print("in Unregister!", flush=True)
         is_unregistered = False
         try:
@@ -68,9 +69,9 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
             is_unregistered = True
         except Exception as e:
             pass
-        return vault_setup_pb2.UnregisterResponse(is_unregistered=is_unregistered)
+        return setup_pb2.UnregisterResponse(is_unregistered=is_unregistered)
     
-    # API method
+    # API methods
     async def do_setup(self, share_servers_num: int):
         for i in range(share_servers_num):
             print(f"spawning shareServer {i}")
@@ -82,7 +83,7 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
         async with self._is_setup_finished_lock:
             return self._is_setup_finished
 
-    async def spawn_bootstrap_server(self):
+    async def spawn_bootstrap_service(self, block: bool = True):
         self.bootstrap_idx+=1
         print("spawn_container", flush=True)
         container = docker_utils.spawn_container(
@@ -90,13 +91,21 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
             container_name=f"vault-bootstrap-{self.bootstrap_idx}",
             command=DOCKER_BOOTSTRAP_SERVER_COMMAND
             )
-        print("waiting for registration", flush=True)
-        service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
+        service_data = None
+        if block:
+            print("waiting for registration", flush=True)
+            service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
         return service_data
 
-    async def kill_server(self, container_id: str):
-        #TODO
-        pass
+    async def terminate_service(self, service_data: types.ServiceData, block: bool = True):
+        _address = f'{service_data.ip_address}:{SETUP_PORT}'
+        async with grpc.aio.insecure_channel(_address) as channel:
+            stub = setup_pb2_grpc.SetupUnitStub(channel)
+            await stub.Terminate(Empty())
+        if block:
+            await self._wait_for_container_id_unregistration(service_data.container_id)
+            await docker_utils.wait_for_container_to_stop(service_data.container_id)
+            docker_utils.remove_container(service_data.container_id)
     
     async def get_all_share_servers(self) -> List[types.ServiceData]:
         #TODO        
@@ -106,23 +115,26 @@ class SetupMaster(vault_setup_pb2_grpc.SetupMaster):
     async def _start_setup_master_server(self, server_ip: str = "[::]"):
         try:
             server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
-            vault_setup_pb2_grpc.add_SetupMasterServicer_to_server(self, server)
-            server.add_insecure_port(f'{server_ip}:{SETUP_MASTER_PORT}')
+            setup_pb2_grpc.add_SetupMasterServicer_to_server(self, server)
+            server.add_insecure_port(f'{server_ip}:{SETUP_PORT}')
             await server.start()
-            print(f"SetupMaster started start_setup_master_server on port {SETUP_MASTER_PORT}...")
+            print(f"SetupMaster started start_setup_master_server on port {SETUP_PORT}...")
             await server.wait_for_termination()
         except asyncio.CancelledError:
             print("Stoppig setup master service...")
             await server.stop(grace=10) # grace period of 10 seconds
 
-    async def _spawn_share_server(self):
+    async def _spawn_share_service(self, block: bool = True):
         self.share_server_idx+=1
         container = docker_utils.spawn_container(
             DOCKER_IMAGE_NAME,
             container_name=f"vault-share-{self.bootstrap_idx}",
             command=DOCKER_SHARE_SERVER_COMMAND
             )
-        service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
+        
+        service_data = None
+        if block:
+            service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
         return service_data
 
     async def _get_container_data(self, container_id: str) -> Optional[types.ServiceData]:

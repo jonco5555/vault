@@ -1,19 +1,27 @@
 from common.setup_unit import SetupUnit
-from common.generated import vault_setup_pb2
+from common.generated import setup_pb2
 import asyncio
 
 
 async def main():
-    setup_slave = SetupUnit(vault_setup_pb2.ServiceType.BOOSTRAP_SERVER)
+    setup_unit = SetupUnit(setup_pb2.ServiceType.BOOSTRAP_SERVER)
 
-    print("hello bootstrap!")
-    print("registring...")
-    await setup_slave.register()
-    print("registred, sleeping")
-    await asyncio.sleep(10)
-    print("wakeup! unregistring...")
-    await setup_slave.unregister()
-    print("unregistred, bye bye!")
+    print("stating bootstrap...")
+    # TODO: run here the bootstrap service!
+    other_task = asyncio.create_task(asyncio.sleep(1000))
+    print("started bootstrap!")
+
+    print("initing and waiting for shutdown...")
+    await setup_unit.init_and_wait_for_shutdown()
+    
+    print("terminating bootstrap...")
+    # TODO: kill here the bootstrap service!
+    other_task.cancel()
+    await asyncio.gather(other_task, return_exceptions=True)
+    print("terminated bootstrap!")
+
+    print("cleanup...")
+    await setup_unit.cleanup()
 
 if __name__ == "__main__":
     asyncio.run(main())

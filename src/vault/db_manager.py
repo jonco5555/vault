@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import logging
 
 from typing import Optional
-from common.generated import vault_setup_pb2
+from common.generated import setup_pb2
 from common import types
 
 logging.basicConfig(

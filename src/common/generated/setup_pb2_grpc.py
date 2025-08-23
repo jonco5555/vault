@@ -3,7 +3,8 @@
 import grpc
 import warnings
 
-import common.generated.vault_setup_pb2 as vault__setup__pb2
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+import common.generated.setup_pb2 as setup__pb2
 
 GRPC_GENERATED_VERSION = '1.73.1'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +19,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in vault_setup_pb2_grpc.py depends on'
+        + f' but the generated code in setup_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,13 +37,13 @@ class SetupMasterStub(object):
         """
         self.Register = channel.unary_unary(
                 '/vault.SetupMaster/Register',
-                request_serializer=vault__setup__pb2.RegisterRequest.SerializeToString,
-                response_deserializer=vault__setup__pb2.RegisterResponse.FromString,
+                request_serializer=setup__pb2.RegisterRequest.SerializeToString,
+                response_deserializer=setup__pb2.RegisterResponse.FromString,
                 _registered_method=True)
         self.Unregister = channel.unary_unary(
                 '/vault.SetupMaster/Unregister',
-                request_serializer=vault__setup__pb2.UnregisterRequest.SerializeToString,
-                response_deserializer=vault__setup__pb2.UnregisterResponse.FromString,
+                request_serializer=setup__pb2.UnregisterRequest.SerializeToString,
+                response_deserializer=setup__pb2.UnregisterResponse.FromString,
                 _registered_method=True)
 
 
@@ -66,13 +67,13 @@ def add_SetupMasterServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Register': grpc.unary_unary_rpc_method_handler(
                     servicer.Register,
-                    request_deserializer=vault__setup__pb2.RegisterRequest.FromString,
-                    response_serializer=vault__setup__pb2.RegisterResponse.SerializeToString,
+                    request_deserializer=setup__pb2.RegisterRequest.FromString,
+                    response_serializer=setup__pb2.RegisterResponse.SerializeToString,
             ),
             'Unregister': grpc.unary_unary_rpc_method_handler(
                     servicer.Unregister,
-                    request_deserializer=vault__setup__pb2.UnregisterRequest.FromString,
-                    response_serializer=vault__setup__pb2.UnregisterResponse.SerializeToString,
+                    request_deserializer=setup__pb2.UnregisterRequest.FromString,
+                    response_serializer=setup__pb2.UnregisterResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -100,8 +101,8 @@ class SetupMaster(object):
             request,
             target,
             '/vault.SetupMaster/Register',
-            vault__setup__pb2.RegisterRequest.SerializeToString,
-            vault__setup__pb2.RegisterResponse.FromString,
+            setup__pb2.RegisterRequest.SerializeToString,
+            setup__pb2.RegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -127,8 +128,80 @@ class SetupMaster(object):
             request,
             target,
             '/vault.SetupMaster/Unregister',
-            vault__setup__pb2.UnregisterRequest.SerializeToString,
-            vault__setup__pb2.UnregisterResponse.FromString,
+            setup__pb2.UnregisterRequest.SerializeToString,
+            setup__pb2.UnregisterResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
+class SetupUnitStub(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Terminate = channel.unary_unary(
+                '/vault.SetupUnit/Terminate',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                _registered_method=True)
+
+
+class SetupUnitServicer(object):
+    """Missing associated documentation comment in .proto file."""
+
+    def Terminate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_SetupUnitServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Terminate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Terminate,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'vault.SetupUnit', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('vault.SetupUnit', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class SetupUnit(object):
+    """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def Terminate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/vault.SetupUnit/Terminate',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
