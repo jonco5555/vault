@@ -564,6 +564,14 @@ wheels = [
 ]
 
 [[package]]
+name = "threshold-crypto"
+version = "0.3.0"
+source = { git = "https://github.com/tompetersen/threshold-crypto.git#e80d2fc9a1999992d65f14b70a02f51e0b8250c3" }
+dependencies = [
+    { name = "pynacl" },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.14.1"
 source = { registry = "https://pypi.org/simple" }
@@ -592,6 +600,7 @@ dependencies = [
     { name = "pycryptodome" },
     { name = "pynacl" },
     { name = "sqlalchemy" },
+    { name = "threshold-crypto" },
 ]
 
 [package.dev-dependencies]
@@ -610,6 +619,7 @@ requires-dist = [
     { name = "pycryptodome", specifier = ">=3.23.0" },
     { name = "pynacl", specifier = ">=1.5.0" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
+    { name = "threshold-crypto", git = "https://github.com/tompetersen/threshold-crypto.git" },
 ]
 
 [package.metadata.requires-dev]

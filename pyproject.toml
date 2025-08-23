@@ -14,6 +14,7 @@ dependencies = [
     "pycryptodome>=3.23.0",
     "pynacl>=1.5.0",
     "sqlalchemy>=2.0.43",
+    "threshold-crypto",
 ]
 
 [project.scripts]
@@ -30,3 +31,6 @@ dev = [
     "pytest-asyncio>=1.1.0",
     "testcontainers[postgres]>=4.12.0",
 ]
+
+[tool.uv.sources]
+threshold-crypto = { git = "https://github.com/tompetersen/threshold-crypto.git" }
