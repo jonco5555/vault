@@ -1,6 +1,6 @@
 import pytest
 
-from src.vault.crypto.threshold import (
+from vault.crypto.threshold import (
     generate_key_and_shares,
     encrypt,
     partial_decrypt,
