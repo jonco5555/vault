@@ -12,12 +12,16 @@ async def main():
     setup_master = await SetupMaster.create(db_manager)
     print("after!", flush=True)
 
-
     print("spawning bootstrap server", flush=True)
-    service_data = await setup_master.spawn_bootstrap_server()
+    service_data = await setup_master.spawn_bootstrap_service()
+
+    print("spawned, sleeping...", flush=True)
+    # do work with the bootstrap server
+    await asyncio.sleep(10)
+    print("wakeup!...", flush=True)
 
     print("waiting for unregistration", flush=True)
-    await setup_master._wait_for_container_id_unregistration(service_data.container_id, timeout_s=20)
+    await setup_master.terminate_service(service_data)
     print("unregistered", flush=True)
     # Wait for container to finish and get logs
 

@@ -2,6 +2,7 @@ from typing import Optional
 import docker
 import subprocess
 import os
+import asyncio
 
 from common.constants import DOCKER_NETWORK_NAME
 
@@ -47,3 +48,25 @@ def get_container_address(container_id: str) -> str:
     container = client.containers.get(container_id)
     networks = container.attrs['NetworkSettings']['Networks']
     return next(iter(networks.values()))['IPAddress']
+
+async def wait_for_container_to_stop(container_id: str, timeout: float | None = None):
+    client = docker.from_env()
+    container = client.containers.get(container_id)
+
+    async def _wait():
+        return await asyncio.to_thread(container.wait)  # non-blocking
+
+    try:
+        result = await asyncio.wait_for(_wait(), timeout=timeout)
+        print(f"Container {container_id} stopped with:", result)
+        return result
+    except asyncio.TimeoutError:
+        print(f"Timeout while waiting for {container_id} to stop")
+        return None
+    
+def remove_container(container_id: str):
+    client = docker.from_env()
+    container = client.containers.get(container_id)
+
+    # TODO: Remove forcibly?
+    container.remove(force=False)

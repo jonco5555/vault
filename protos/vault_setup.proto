@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 package vault;
 
 service SetupMaster {
@@ -30,4 +32,8 @@ message UnregisterRequest {
 
 message UnregisterResponse {
     bool is_unregistered = 1;
+}
+
+service SetupUnit {
+    rpc Terminate(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
