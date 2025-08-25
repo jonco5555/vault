@@ -2,6 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 
 import grpc
+
 import vault.grpc.vault_pb2 as vault__pb2
 
 GRPC_GENERATED_VERSION = "1.74.0"
@@ -284,10 +285,10 @@ class ShareServerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.LoadShare = channel.unary_unary(
-            "/vault.ShareServer/LoadShare",
-            request_serializer=vault__pb2.LoadShareRequest.SerializeToString,
-            response_deserializer=vault__pb2.LoadShareResponse.FromString,
+        self.StoreShare = channel.unary_unary(
+            "/vault.ShareServer/StoreShare",
+            request_serializer=vault__pb2.StoreShareRequest.SerializeToString,
+            response_deserializer=vault__pb2.StoreShareResponse.FromString,
             _registered_method=True,
         )
         self.Decrypt = channel.unary_unary(
@@ -301,7 +302,7 @@ class ShareServerStub(object):
 class ShareServerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def LoadShare(self, request, context):
+    def StoreShare(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
@@ -316,10 +317,10 @@ class ShareServerServicer(object):
 
 def add_ShareServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "LoadShare": grpc.unary_unary_rpc_method_handler(
-            servicer.LoadShare,
-            request_deserializer=vault__pb2.LoadShareRequest.FromString,
-            response_serializer=vault__pb2.LoadShareResponse.SerializeToString,
+        "StoreShare": grpc.unary_unary_rpc_method_handler(
+            servicer.StoreShare,
+            request_deserializer=vault__pb2.StoreShareRequest.FromString,
+            response_serializer=vault__pb2.StoreShareResponse.SerializeToString,
         ),
         "Decrypt": grpc.unary_unary_rpc_method_handler(
             servicer.Decrypt,
@@ -339,7 +340,7 @@ class ShareServer(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def LoadShare(
+    def StoreShare(
         request,
         target,
         options=(),
@@ -354,9 +355,9 @@ class ShareServer(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            "/vault.ShareServer/LoadShare",
-            vault__pb2.LoadShareRequest.SerializeToString,
-            vault__pb2.LoadShareResponse.FromString,
+            "/vault.ShareServer/StoreShare",
+            vault__pb2.StoreShareRequest.SerializeToString,
+            vault__pb2.StoreShareResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -9,6 +9,8 @@ from vault.grpc.vault_pb2 import (
     GenerateSharesRequest,
     GenerateSharesResponse,
     StoreSecretResponse,
+    PartialDecrypted,
+    RetrieveSecretResponse,
 )
 import logging
 import grpc
@@ -68,25 +70,31 @@ class Manager(ManagerServicer):
         # TODO: Deploy bootstrap
         ########################
 
+        public_keys = []  # TODO: get public keys from DB
+        public_keys.append(request.user_public_key)
+
         # Sending generate shares request to bootstrap
         bootstrap_address = "bootstrap.example.com:50051"
         async with grpc.aio.insecure_channel(bootstrap_address) as channel:
             stub = BootstrapStub(channel)
             response: GenerateSharesResponse = await stub.GenerateShares(
                 GenerateSharesRequest(
-                    num_of_shares=self._num_of_share_servers + 1,  # +1 for the user
-                    user_public_key=request.user_public_key,
+                    threshold=self._num_of_share_servers + 1,  # +1 for the user
+                    num_of_shares=self._num_of_share_servers + 1,
+                    public_keys=public_keys,
                 )
             )
+
+        ######################
+        # TODO: Kill bootstrap
+        ######################
 
         ##############################################
         # TODO: send to all share servers their shares
         ##############################################
 
         # Send to user his share and encryption key
-        user_share = next(
-            (s.share for s in response.shares if s.share_server_id == request.user_id)
-        )
+        user_share = response.shares.pop()  # Assuming last share is for the user
         return RegisterResponse(
             share=user_share, encryption_key=response.encryption_key
         )
@@ -100,6 +108,7 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_exists(request.user_id, context):
             return StoreSecretResponse()
 
+        # TODO: add the request.secret fields to DB
         await self._db.add_secret(request.user_id, request.secret_id, request.secret)
         return StoreSecretResponse(success=True)
 
@@ -127,8 +136,8 @@ class Manager(ManagerServicer):
         ######################################################
         # TODO: get partial encryptions from all share servers
         ######################################################
-
-        return StoreSecretResponse(secret=secret)
+        partial_decryptions: list[PartialDecrypted] = []
+        return RetrieveSecretResponse(partial_decryptions=partial_decryptions)
 
     def _validate_server_ready(self, context):
         if not self._ready:

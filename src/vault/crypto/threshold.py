@@ -3,79 +3,110 @@ from threshold_crypto.data import (
     PublicKey,
     KeyShare,
     EncryptedMessage,
-    PartialDecryption,
-    ThresholdParameters,
 )
+from Crypto.PublicKey.ECC import EccPoint
+from vault.grpc.vault_pb2 import Point, Secret, PartialDecrypted
 
 
 def generate_key_and_shares(
     threshold: int, num_of_shares: int
-) -> tuple[PublicKey, list[KeyShare], ThresholdParameters]:
+) -> tuple[Point, list[Point]]:
     """
-    Generates a new key pair and splits the private key into shares.
+    Generates an encryption key and its threshold shares.
 
     Args:
-        threshold (int): Minimum number of shares required to reconstruct the private key.
-        num_of_shares (int): Total number of shares to create.
+        threshold (int): The minimum number of shares required to reconstruct the key.
+        num_of_shares (int): The total number of shares to generate.
 
     Returns:
-        PublicKey: The generated public key.
-        list[KeyShare]: List of generated key shares.
-        ThresholdParameters: The parameters used for threshold encryption.
+        tuple[Point, list[Point]]: A tuple containing the generated encryption key and a list of shares.
     """
-    curve_params = tc.CurveParameters()
-    threshold_params = tc.ThresholdParameters(t=threshold, n=num_of_shares)
     pub_key, key_shares = tc.create_public_key_and_shares_centralized(
-        curve_params, threshold_params
+        tc.CurveParameters(), tc.ThresholdParameters(t=threshold, n=num_of_shares)
     )
     pub_key: PublicKey
     key_shares: list[KeyShare]
-    return pub_key, key_shares, threshold_params
+    encryption_key = Point(x=str(pub_key.Q.x), y=str(pub_key.Q.y))
+    shares = [Point(x=str(s.x), y=str(s.y)) for s in key_shares]
+    return encryption_key, shares
 
 
-def encrypt(message: str, pub_key: PublicKey) -> EncryptedMessage:
+def encrypt(message: str, encryption_key: Point) -> EncryptedMessage:
     """
-    Encrypts a message using the provided public key.
-        message (str): The plaintext message to be encrypted.
-        pub_key (PublicKey): The public key used for encryption.
-        EncryptedMessage: The encrypted message object.
-
-    Returns:
-        EncryptedMessage: The encrypted message object.
-    """
-    return tc.encrypt_message(message, pub_key)
-
-
-def partial_decrypt(
-    encrypted_message: EncryptedMessage, key_share: KeyShare
-) -> PartialDecryption:
-    """
-    Partially decrypts an encrypted message using a key share.
+    Encrypts a message using the provided encryption key.
 
     Args:
-        encrypted_message (EncryptedMessage): The encrypted message to be partially decrypted.
-        key_share (KeyShare): The key share used for partial decryption.
+        message (str): The plaintext message to encrypt.
+        encryption_key (Point): The public encryption key used for encryption.
 
     Returns:
-        PartialDecryption: The partially decrypted message.
+        EncryptedMessage: An object containing the encrypted message components (C1, C2, ciphertext).
     """
-    return tc.compute_partial_decryption(encrypted_message, key_share)
+    encrypted_message = tc.encrypt_message(
+        message, PublicKey(EccPoint(int(encryption_key.x), int(encryption_key.y)))
+    )
+    return Secret(
+        c1=Point(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
+        c2=Point(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
+        ciphertext=encrypted_message.ciphertext,
+    )
+
+
+def partial_decrypt(secret: Secret, share: Point) -> PartialDecrypted:
+    """
+    Performs a partial decryption of a secret using a given share.
+
+    Args:
+        secret (Secret): The encrypted secret to be partially decrypted.
+        share (Point): The share (point) used for partial decryption.
+
+    Returns:
+        PartialDecrypted: The result of the partial decryption.
+    """
+    partial_decrypted = tc.compute_partial_decryption(
+        EncryptedMessage(
+            EccPoint(int(secret.c1.x), int(secret.c1.y)),
+            EccPoint(int(secret.c2.x), int(secret.c2.y)),
+            secret.ciphertext,
+        ),
+        KeyShare(int(share.x), int(share.y), tc.CurveParameters()),
+    )
+    return PartialDecrypted(
+        x=str(partial_decrypted.x),
+        yc1=Point(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
+    )
 
 
 def decrypt(
-    partial_decryptions: list[PartialDecryption],
-    encrypted_message: EncryptedMessage,
-    threshold_params: ThresholdParameters,
+    partial_decryptions: list[PartialDecrypted],
+    secret: Secret,
+    threshold: int,
+    num_of_shares: int,
 ) -> str:
     """
-    Combines partial decryptions and decrypts encrypted message.
+    Decrypts a secret using a list of partial decryptions and threshold parameters.
 
     Args:
-        partial_decryptions (list[PartialDecryption]): List of partial decryptions.
-        encrypted_message (EncryptedMessage): The original encrypted message.
-        threshold_params (ThresholdParameters): The threshold parameters used during key generation.
+        partial_decryptions (list[PartialDecrypted]): List of partial decryption results.
+        secret (Secret): The encrypted secret to decrypt.
+        threshold (int): Minimum number of shares required for decryption.
+        num_of_shares (int): Total number of shares.
 
     Returns:
-        str: The recovered plaintext message.
+        str: The decrypted plaintext message.
     """
-    return tc.decrypt_message(partial_decryptions, encrypted_message, threshold_params)
+    threshold_params = tc.ThresholdParameters(t=threshold, n=num_of_shares)
+    decryptions = [
+        tc.PartialDecryption(
+            x=int(pd.x),
+            yC1=EccPoint(int(pd.yc1.x), int(pd.yc1.y)),
+            curve_params=tc.CurveParameters(),
+        )
+        for pd in partial_decryptions
+    ]
+    encrypted_message = EncryptedMessage(
+        EccPoint(int(secret.c1.x), int(secret.c1.y)),
+        EccPoint(int(secret.c2.x), int(secret.c2.y)),
+        secret.ciphertext,
+    )
+    return tc.decrypt_message(decryptions, encrypted_message, threshold_params)
