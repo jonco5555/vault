@@ -32,7 +32,7 @@ def generate_key_and_shares(
     return encryption_key, shares
 
 
-def encrypt(message: str, encryption_key: Point) -> EncryptedMessage:
+def encrypt(message: str, encryption_key: Point) -> Secret:
     """
     Encrypts a message using the provided encryption key.
 
@@ -41,12 +41,12 @@ def encrypt(message: str, encryption_key: Point) -> EncryptedMessage:
         encryption_key (Point): The public encryption key used for encryption.
 
     Returns:
-        EncryptedMessage: An object containing the encrypted message components (C1, C2, ciphertext).
+        Secret: An object containing the encrypted message components (C1, C2, ciphertext).
     """
     encrypted_message = tc.encrypt_message(
         message, PublicKey(EccPoint(int(encryption_key.x), int(encryption_key.y)))
     )
-    return Secret(
+    return Secret(  # TODO: create Pydantic model if needed
         c1=Point(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
         c2=Point(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
         ciphertext=encrypted_message.ciphertext,
