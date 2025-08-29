@@ -38,3 +38,6 @@ dev = [
 
 [tool.uv.sources]
 threshold-crypto = { git = "https://github.com/tompetersen/threshold-crypto.git" }
+
+[tool.ruff]
+exclude = ["src/vault/common/generated/**"]
