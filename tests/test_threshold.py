@@ -1,10 +1,11 @@
 import pytest
 from threshold_crypto.data import ThresholdCryptoError
+
 from vault.crypto.threshold import (
-    generate_key_and_shares,
-    encrypt,
-    partial_decrypt,
     decrypt,
+    encrypt,
+    generate_key_and_shares,
+    partial_decrypt,
 )
 
 

@@ -1,13 +1,13 @@
 import grpc
 
-from vault.grpc.vault_pb2_grpc import ManagerStub
-from vault.grpc.vault_pb2 import (
+from vault.common.generated.vault_pb2 import (
     RegisterRequest,
-    StoreSecretRequest,
     RetrieveSecretRequest,
+    StoreSecretRequest,
 )
+from vault.common.generated.vault_pb2_grpc import ManagerStub
 from vault.crypto.asymmetric import generate_key_pair
-from vault.crypto.threshold import encrypt, decrypt
+from vault.crypto.threshold import decrypt, encrypt
 
 
 class User:

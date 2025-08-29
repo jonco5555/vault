@@ -1,4 +1,5 @@
 import pytest
+
 from vault.crypto.shamir import SharesManager
 
 

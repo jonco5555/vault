@@ -1,19 +1,21 @@
-from vault.manager.db_manager import DBManager
-from vault.grpc.vault_pb2_grpc import (
-    ManagerServicer,
-    add_ManagerServicer_to_server,
-    BootstrapStub,
-)
-from vault.grpc.vault_pb2 import (
-    RegisterResponse,
+import logging
+
+import grpc
+
+from vault.common.generated.vault_pb2 import (
     GenerateSharesRequest,
     GenerateSharesResponse,
-    StoreSecretResponse,
     PartialDecrypted,
+    RegisterResponse,
     RetrieveSecretResponse,
+    StoreSecretResponse,
 )
-import logging
-import grpc
+from vault.common.generated.vault_pb2_grpc import (
+    BootstrapStub,
+    ManagerServicer,
+    add_ManagerServicer_to_server,
+)
+from vault.manager.db_manager import DBManager
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

@@ -1,11 +1,12 @@
 import threshold_crypto as tc
-from threshold_crypto.data import (
-    PublicKey,
-    KeyShare,
-    EncryptedMessage,
-)
 from Crypto.PublicKey.ECC import EccPoint
-from vault.grpc.vault_pb2 import Point, Secret, PartialDecrypted
+from threshold_crypto.data import (
+    EncryptedMessage,
+    KeyShare,
+    PublicKey,
+)
+
+from vault.common.generated.vault_pb2 import PartialDecrypted, Point, Secret
 
 
 def generate_key_and_shares(

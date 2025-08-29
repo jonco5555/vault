@@ -1,11 +1,11 @@
-from sqlalchemy import NullPool, select
-
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import logging
-
 from typing import Optional
-from common import types
+
+from sqlalchemy import NullPool, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from vault.common.types import ServiceData
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -98,7 +98,7 @@ class DBManager:
             result = await session.execute(select(PubKey).filter_by(user_id=user_id))
             return result.scalars().first() is not None
 
-    async def add_server(self, register_request: types.ServiceData):
+    async def add_server(self, register_request: ServiceData):
         self._logger.info(
             f"Adding server with container_id={register_request.container_id}"
         )
@@ -121,14 +121,14 @@ class DBManager:
             await session.delete(row)
             await session.commit()
 
-    async def get_server(self, container_id: str) -> Optional[types.ServiceData]:
+    async def get_server(self, container_id: str) -> Optional[ServiceData]:
         self._logger.info(f"Retrieving server data for container_id={container_id}")
         async with self._session() as session:
             result = await session.get(Server, container_id)
 
-            retval: Optional[types.ServiceData] = None
+            retval: Optional[ServiceData] = None
             if result:
-                retval = types.ServiceData(
+                retval = ServiceData(
                     container_id=result.container_id,
                     type=result.type,
                     ip_address=result.ip_address,

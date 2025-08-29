@@ -1,6 +1,7 @@
 import grpc
-from vault.grpc.vault_pb2_grpc import ShareServerServicer
-from vault.grpc.vault_pb2 import StoreShareResponse, Point, DecryptResponse
+
+from vault.common.generated.vault_pb2 import DecryptResponse, Point, StoreShareResponse
+from vault.common.generated.vault_pb2_grpc import ShareServerServicer
 from vault.crypto.threshold import partial_decrypt
 
 

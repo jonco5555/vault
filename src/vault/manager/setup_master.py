@@ -1,32 +1,28 @@
 import asyncio
-from typing import Optional, List
-import grpc
-from concurrent import futures
 import weakref
+from concurrent import futures
+from typing import List, Optional
 
-from common import docker_utils
-from common import types
-
+import grpc
 from google.protobuf.empty_pb2 import Empty
-from common.generated import setup_pb2
-from common.generated import setup_pb2_grpc
-from common import types
-from common.constants import (
-    SETUP_PORT,
+
+from vault.common import docker_utils, types
+from vault.common.constants import (
+    DOCKER_BOOTSTRAP_SERVER_COMMAND,
     DOCKER_IMAGE_NAME,
     DOCKER_SHARE_SERVER_COMMAND,
-    DOCKER_BOOTSTRAP_SERVER_COMMAND
-    )
+    SETUP_PORT,
+)
+from vault.common.generated import setup_pb2, setup_pb2_grpc
+from vault.manager.db_manager import DBManager
 
-#TODO: move db manager to be in manager directory
-from vault.db_manager import DBManager
 
 class SetupMaster(setup_pb2_grpc.SetupMaster):
     def __init__(
-            self,
-            db: DBManager,
-            server_ip: str = "[::]",
-            ):
+        self,
+        db: DBManager,
+        server_ip: str = "[::]",
+    ):
         setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
         self._wait_for_container_id_condition = asyncio.Condition()
@@ -35,7 +31,9 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._is_setup_finished_lock = asyncio.Lock()
 
         self._server_ip = server_ip
-        self._running_server_task = asyncio.create_task(self._start_setup_master_server(self._server_ip))
+        self._running_server_task = asyncio.create_task(
+            self._start_setup_master_server(self._server_ip)
+        )
         weakref.finalize(self, self.cleanup)
 
         self.bootstrap_idx = 0
@@ -44,10 +42,10 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
     @classmethod
     async def create(cls, db: DBManager, server_ip: str = "[::]"):
         retval = cls(db=db, server_ip=server_ip)
-        await asyncio.sleep(0) # start grpc server!
-        
+        await asyncio.sleep(0)  # start grpc server!
+
         return retval
-    
+
     def cleanup(self):
         self._running_server_task.cancel()
 
@@ -58,7 +56,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         async with self._wait_for_container_id_condition:
             self._wait_for_container_id_condition.notify_all()
         return setup_pb2.RegisterResponse(is_registered=True)
-    
+
     async def Unregister(self, request: setup_pb2.UnregisterRequest, context):
         print("in Unregister!", flush=True)
         is_unregistered = False
@@ -67,10 +65,10 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             async with self._wait_for_container_id_condition:
                 self._wait_for_container_id_condition.notify_all()
             is_unregistered = True
-        except Exception as e:
+        except Exception:
             pass
         return setup_pb2.UnregisterResponse(is_unregistered=is_unregistered)
-    
+
     # API methods
     async def do_setup(self, share_servers_num: int):
         for i in range(share_servers_num):
@@ -84,21 +82,25 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             return self._is_setup_finished
 
     async def spawn_bootstrap_service(self, block: bool = True):
-        self.bootstrap_idx+=1
+        self.bootstrap_idx += 1
         print("spawn_container", flush=True)
         container = docker_utils.spawn_container(
             DOCKER_IMAGE_NAME,
             container_name=f"vault-bootstrap-{self.bootstrap_idx}",
-            command=DOCKER_BOOTSTRAP_SERVER_COMMAND
-            )
+            command=DOCKER_BOOTSTRAP_SERVER_COMMAND,
+        )
         service_data = None
         if block:
             print("waiting for registration", flush=True)
-            service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
+            service_data: types.ServiceData = (
+                await self._wait_for_container_id_registration(container.short_id)
+            )
         return service_data
 
-    async def terminate_service(self, service_data: types.ServiceData, block: bool = True):
-        _address = f'{service_data.ip_address}:{SETUP_PORT}'
+    async def terminate_service(
+        self, service_data: types.ServiceData, block: bool = True
+    ):
+        _address = f"{service_data.ip_address}:{SETUP_PORT}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())
@@ -106,9 +108,9 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             await self._wait_for_container_id_unregistration(service_data.container_id)
             await docker_utils.wait_for_container_to_stop(service_data.container_id)
             docker_utils.remove_container(service_data.container_id)
-    
+
     async def get_all_share_servers(self) -> List[types.ServiceData]:
-        #TODO        
+        # TODO
         pass
 
     # Private methods
@@ -116,31 +118,39 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         try:
             server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
             setup_pb2_grpc.add_SetupMasterServicer_to_server(self, server)
-            server.add_insecure_port(f'{server_ip}:{SETUP_PORT}')
+            server.add_insecure_port(f"{server_ip}:{SETUP_PORT}")
             await server.start()
-            print(f"SetupMaster started start_setup_master_server on port {SETUP_PORT}...")
+            print(
+                f"SetupMaster started start_setup_master_server on port {SETUP_PORT}..."
+            )
             await server.wait_for_termination()
         except asyncio.CancelledError:
             print("Stoppig setup master service...")
-            await server.stop(grace=10) # grace period of 10 seconds
+            await server.stop(grace=10)  # grace period of 10 seconds
 
     async def _spawn_share_service(self, block: bool = True):
-        self.share_server_idx+=1
+        self.share_server_idx += 1
         container = docker_utils.spawn_container(
             DOCKER_IMAGE_NAME,
             container_name=f"vault-share-{self.bootstrap_idx}",
-            command=DOCKER_SHARE_SERVER_COMMAND
-            )
-        
+            command=DOCKER_SHARE_SERVER_COMMAND,
+        )
+
         service_data = None
         if block:
-            service_data: types.ServiceData = await self._wait_for_container_id_registration(container.short_id)
+            service_data: types.ServiceData = (
+                await self._wait_for_container_id_registration(container.short_id)
+            )
         return service_data
 
-    async def _get_container_data(self, container_id: str) -> Optional[types.ServiceData]:
+    async def _get_container_data(
+        self, container_id: str
+    ) -> Optional[types.ServiceData]:
         return await self._db.get_server(container_id)
 
-    async def _wait_for_container_id_registration(self, container_id: str, timeout_s: int = 10) -> types.ServiceData:
+    async def _wait_for_container_id_registration(
+        self, container_id: str, timeout_s: int = 10
+    ) -> types.ServiceData:
         start_time = asyncio.get_event_loop().time()
         while True:
             retval = await self._get_container_data(container_id)
@@ -151,16 +161,23 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             elapsed = asyncio.get_event_loop().time() - start_time
             remaining_s = timeout_s - elapsed
             if remaining_s <= 0:
-                raise TimeoutError(f"container_id '{container_id}' did not appear in DB within {timeout_s}s")
-            
+                raise TimeoutError(
+                    f"container_id '{container_id}' did not appear in DB within {timeout_s}s"
+                )
+
             async with self._wait_for_container_id_condition:
                 try:
-                    await asyncio.wait_for(self._wait_for_container_id_condition.wait(), timeout=remaining_s)
+                    await asyncio.wait_for(
+                        self._wait_for_container_id_condition.wait(),
+                        timeout=remaining_s,
+                    )
                     print("Woke up by notification, rechecking DB...")
                 except asyncio.TimeoutError:
                     print(f"No notification in {remaining_s}s, rechecking DB...")
 
-    async def _wait_for_container_id_unregistration(self, container_id: str, timeout_s: int = 10):
+    async def _wait_for_container_id_unregistration(
+        self, container_id: str, timeout_s: int = 10
+    ):
         start_time = asyncio.get_event_loop().time()
         while True:
             retval = await self._get_container_data(container_id)
@@ -171,11 +188,16 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             elapsed = asyncio.get_event_loop().time() - start_time
             remaining_s = timeout_s - elapsed
             if remaining_s <= 0:
-                raise TimeoutError(f"container_id '{container_id}' appears in DB within {timeout_s}s")
+                raise TimeoutError(
+                    f"container_id '{container_id}' appears in DB within {timeout_s}s"
+                )
 
             async with self._wait_for_container_id_condition:
                 try:
-                    await asyncio.wait_for(self._wait_for_container_id_condition.wait(), timeout=remaining_s)
+                    await asyncio.wait_for(
+                        self._wait_for_container_id_condition.wait(),
+                        timeout=remaining_s,
+                    )
                     print("Woke up by notification, rechecking DB...")
                 except asyncio.TimeoutError:
                     print(f"No notification in {remaining_s}s, rechecking DB...")
