@@ -5,8 +5,8 @@ import "google/protobuf/empty.proto";
 package vault;
 
 service SetupMaster {
-    rpc Register(RegisterRequest) returns (RegisterResponse);
-    rpc Unregister(UnregisterRequest) returns (UnregisterResponse);
+    rpc SetupRegister(SetupRegisterRequest) returns (SetupRegisterResponse);
+    rpc SetupUnregister(SetupUnregisterRequest) returns (SetupUnregisterResponse);
 }
 
 
@@ -15,22 +15,22 @@ enum ServiceType {
     BOOSTRAP_SERVER = 1;
 }
 
-message RegisterRequest {
+message SetupRegisterRequest {
     ServiceType type = 1;
     string container_id = 2;
     string ip_address = 3;
     bytes public_key = 4;
 }
 
-message RegisterResponse {
+message SetupRegisterResponse {
     bool is_registered = 1;
 }
 
-message UnregisterRequest {
+message SetupUnregisterRequest {
     string container_id = 1;
 }
 
-message UnregisterResponse {
+message SetupUnregisterResponse {
     bool is_unregistered = 1;
 }
 

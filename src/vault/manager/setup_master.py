@@ -50,15 +50,15 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._running_server_task.cancel()
 
     # setup_pb2_grpc.SetupMaster inherited methods
-    async def Register(self, request: setup_pb2.RegisterRequest, context):
+    async def SetupRegister(self, request: setup_pb2.SetupRegisterRequest, context):
         print("in Register!", flush=True)
-        await self._db.add_server(types.RegisterRequest_to_ServiceData(request))
+        await self._db.add_server(types.SetupRegisterRequest_to_ServiceData(request))
         async with self._wait_for_container_id_condition:
             self._wait_for_container_id_condition.notify_all()
-        return setup_pb2.RegisterResponse(is_registered=True)
+        return setup_pb2.SetupRegisterResponse(is_registered=True)
 
-    async def Unregister(self, request: setup_pb2.UnregisterRequest, context):
-        print("in Unregister!", flush=True)
+    async def SetupUnregister(self, request: setup_pb2.SetupUnregisterRequest, context):
+        print("in SetupUnregister!", flush=True)
         is_unregistered = False
         try:
             await self._db.remove_server(request.container_id)
@@ -67,7 +67,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             is_unregistered = True
         except Exception:
             pass
-        return setup_pb2.UnregisterResponse(is_unregistered=is_unregistered)
+        return setup_pb2.SetupUnregisterResponse(is_unregistered=is_unregistered)
 
     # API methods
     async def do_setup(self, share_servers_num: int):
