@@ -2,8 +2,8 @@ SETUP_PORT = 5000
 SETUP_MASTER_DNS_ADDRESS = "vault-manager"
 
 DOCKER_IMAGE_NAME = "vault"
-DOCKER_SHARE_SERVER_COMMAND = "python -m src.share_server"
-DOCKER_BOOTSTRAP_SERVER_COMMAND = "python -m src.bootstrap"
+DOCKER_SHARE_SERVER_COMMAND = "python -m src.vault.share_server"
+DOCKER_BOOTSTRAP_SERVER_COMMAND = "python -m src.vault.bootstrap"
 DOCKER_NETWORK_NAME = "vault-net"
 
 DB_DNS_ADDRESS = "vault-postgres"
