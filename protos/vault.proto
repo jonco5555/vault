@@ -13,25 +13,25 @@ message RegisterRequest {
     bytes user_public_key = 2;
 }
 
-message Point {
+message Key {
     string x = 1;
     string y = 2;
 }
 
 message RegisterResponse {
-    Point share = 1;
-    Point encryption_key = 2;
+    Key share = 1;
+    Key encryption_key = 2;
 }
 
 message Secret {
-    Point c1 = 1;
-    Point c2 = 2;
+    Key c1 = 1;
+    Key c2 = 2;
     bytes ciphertext = 3;
 }
 
 message PartialDecrypted {
     string x = 1;
-    Point yc1 = 2;
+    Key yc1 = 2;
 }
 
 message StoreSecretRequest {
@@ -65,8 +65,8 @@ message GenerateSharesRequest {
 }
 
 message GenerateSharesResponse {
-    repeated Point shares = 1;
-    Point encryption_key = 2;
+    repeated Key shares = 1;
+    Key encryption_key = 2;
 }
 
 service ShareServer {
@@ -76,7 +76,7 @@ service ShareServer {
 
 message StoreShareRequest {
     string user_id = 1;
-    Point share = 2;
+    Key share = 2;
 }
 
 message StoreShareResponse {

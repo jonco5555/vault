@@ -6,12 +6,12 @@ from threshold_crypto.data import (
     PublicKey,
 )
 
-from vault.common.generated.vault_pb2 import PartialDecrypted, Point, Secret
+from vault.common.generated.vault_pb2 import Key, PartialDecrypted, Secret
 
 
 def generate_key_and_shares(
     threshold: int, num_of_shares: int
-) -> tuple[Point, list[Point]]:
+) -> tuple[Key, list[Key]]:
     """
     Generates an encryption key and its threshold shares.
 
@@ -20,25 +20,25 @@ def generate_key_and_shares(
         num_of_shares (int): The total number of shares to generate.
 
     Returns:
-        tuple[Point, list[Point]]: A tuple containing the generated encryption key and a list of shares.
+        tuple[Key, list[Key]]: A tuple containing the generated encryption key and a list of shares.
     """
     pub_key, key_shares = tc.create_public_key_and_shares_centralized(
         tc.CurveParameters(), tc.ThresholdParameters(t=threshold, n=num_of_shares)
     )
     pub_key: PublicKey
     key_shares: list[KeyShare]
-    encryption_key = Point(x=str(pub_key.Q.x), y=str(pub_key.Q.y))
-    shares = [Point(x=str(s.x), y=str(s.y)) for s in key_shares]
+    encryption_key = Key(x=str(pub_key.Q.x), y=str(pub_key.Q.y))
+    shares = [Key(x=str(s.x), y=str(s.y)) for s in key_shares]
     return encryption_key, shares
 
 
-def encrypt(message: str, encryption_key: Point) -> Secret:
+def encrypt(message: str, encryption_key: Key) -> Secret:
     """
     Encrypts a message using the provided encryption key.
 
     Args:
         message (str): The plaintext message to encrypt.
-        encryption_key (Point): The public encryption key used for encryption.
+        encryption_key (Key): The public encryption key used for encryption.
 
     Returns:
         Secret: An object containing the encrypted message components (C1, C2, ciphertext).
@@ -47,19 +47,19 @@ def encrypt(message: str, encryption_key: Point) -> Secret:
         message, PublicKey(EccPoint(int(encryption_key.x), int(encryption_key.y)))
     )
     return Secret(  # TODO: create Pydantic model if needed
-        c1=Point(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
-        c2=Point(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
+        c1=Key(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
+        c2=Key(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
         ciphertext=encrypted_message.ciphertext,
     )
 
 
-def partial_decrypt(secret: Secret, share: Point) -> PartialDecrypted:
+def partial_decrypt(secret: Secret, share: Key) -> PartialDecrypted:
     """
     Performs a partial decryption of a secret using a given share.
 
     Args:
         secret (Secret): The encrypted secret to be partially decrypted.
-        share (Point): The share (point) used for partial decryption.
+        share (Key): The share (Key) used for partial decryption.
 
     Returns:
         PartialDecrypted: The result of the partial decryption.
@@ -74,7 +74,7 @@ def partial_decrypt(secret: Secret, share: Point) -> PartialDecrypted:
     )
     return PartialDecrypted(
         x=str(partial_decrypted.x),
-        yc1=Point(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
+        yc1=Key(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
     )
 
 
