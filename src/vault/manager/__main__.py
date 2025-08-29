@@ -1,7 +1,8 @@
-from manager.setup_master import SetupMaster
-from vault.db_manager import DBManager
-from common.constants import DB_URL
 import asyncio
+
+from vault.common.constants import DB_URL
+from vault.manager.db_manager import DBManager
+from vault.manager.setup_master import SetupMaster
 
 
 async def main():
@@ -26,6 +27,7 @@ async def main():
     # Wait for container to finish and get logs
 
     await db_manager.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

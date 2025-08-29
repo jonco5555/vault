@@ -1,6 +1,7 @@
-from common.setup_unit import SetupUnit
-from common.generated import setup_pb2
 import asyncio
+
+from vault.common.generated import setup_pb2
+from vault.common.setup_unit import SetupUnit
 
 
 async def main():
@@ -13,7 +14,7 @@ async def main():
 
     print("initing and waiting for shutdown...")
     await setup_unit.init_and_wait_for_shutdown()
-    
+
     print("terminating bootstrap...")
     # TODO: kill here the bootstrap service!
     other_task.cancel()
@@ -22,6 +23,7 @@ async def main():
 
     print("cleanup...")
     await setup_unit.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

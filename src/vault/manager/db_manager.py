@@ -1,12 +1,11 @@
-from sqlalchemy import NullPool, select
-
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import logging
-
 from typing import Optional
-from common.generated import setup_pb2
-from common import types
+
+from sqlalchemy import NullPool, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from vault.common.types import ServiceData
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -29,12 +28,14 @@ class PubKey(Base):
     user_id: Mapped[str] = mapped_column(primary_key=True)
     public_key: Mapped[bytes] = mapped_column()
 
+
 class Server(Base):
     __tablename__ = "servers"
     container_id: Mapped[str] = mapped_column(primary_key=True)
     type: Mapped[int] = mapped_column()
     ip_address: Mapped[str] = mapped_column()
     public_key: Mapped[bytes] = mapped_column(nullable=True)
+
 
 class DBManager:
     def __init__(self, db_url: str):
@@ -51,7 +52,7 @@ class DBManager:
         await retval.start()
 
         return retval
-    
+
     async def start(self):
         self._logger.info("Creating Tables")
         async with self._engine.begin() as conn:
@@ -90,15 +91,24 @@ class DBManager:
         async with self._session() as session:
             result = await session.execute(select(PubKey).filter_by(user_id=user_id))
             return result.scalars().first()
-        
-    async def add_server(self, register_request: types.ServiceData):
-        self._logger.info(f"Adding server with container_id={register_request.container_id}")
+
+    async def user_exists(self, user_id: str) -> bool:
+        self._logger.info(f"Checking if user exists: {user_id}")
         async with self._session() as session:
-            entry = Server(container_id=register_request.container_id,
-                           type=register_request.type,
-                           ip_address=register_request.ip_address,
-                           public_key=register_request.public_key,
-                           )
+            result = await session.execute(select(PubKey).filter_by(user_id=user_id))
+            return result.scalars().first() is not None
+
+    async def add_server(self, register_request: ServiceData):
+        self._logger.info(
+            f"Adding server with container_id={register_request.container_id}"
+        )
+        async with self._session() as session:
+            entry = Server(
+                container_id=register_request.container_id,
+                type=register_request.type,
+                ip_address=register_request.ip_address,
+                public_key=register_request.public_key,
+            )
             session.add(entry)
             await session.commit()
 
@@ -111,19 +121,18 @@ class DBManager:
             await session.delete(row)
             await session.commit()
 
-    async def get_server(self, container_id: str) -> Optional[types.ServiceData]:
+    async def get_server(self, container_id: str) -> Optional[ServiceData]:
         self._logger.info(f"Retrieving server data for container_id={container_id}")
         async with self._session() as session:
             result = await session.get(Server, container_id)
-            
-            retval: Optional[types.ServiceData] = None
+
+            retval: Optional[ServiceData] = None
             if result:
-                retval = types.ServiceData(
-                    container_id = result.container_id,
-                    type = result.type,
-                    ip_address = result.ip_address,
-                    public_key = result.public_key,
+                retval = ServiceData(
+                    container_id=result.container_id,
+                    type=result.type,
+                    ip_address=result.ip_address,
+                    public_key=result.public_key,
                 )
 
             return retval
-

@@ -10,22 +10,34 @@ service Manager {
 
 message RegisterRequest {
     string user_id = 1;
+    bytes user_public_key = 2;
 }
 
-message Share {
-    int32 index = 1;
-    bytes value = 2;
+message Key {
+    string x = 1;
+    string y = 2;
 }
 
 message RegisterResponse {
-    Share share = 1;
-    bytes encryption_key = 2;
+    Key share = 1;
+    Key encryption_key = 2;
+}
+
+message Secret {
+    Key c1 = 1;
+    Key c2 = 2;
+    bytes ciphertext = 3;
+}
+
+message PartialDecrypted {
+    string x = 1;
+    Key yc1 = 2;
 }
 
 message StoreSecretRequest {
     string user_id = 1;
     string secret_id = 2;
-    bytes secret = 3;
+    Secret secret = 3;
 }
 
 message StoreSecretResponse {
@@ -39,7 +51,7 @@ message RetrieveSecretRequest {
 }
 
 message RetrieveSecretResponse {
-    bytes partial_decrypted_secret = 1;
+    repeated PartialDecrypted partial_decryptions = 1;
 }
 
 service Bootstrap {
@@ -47,38 +59,35 @@ service Bootstrap {
 }
 
 message GenerateSharesRequest {
-    int32 total_shares = 1;
-}
-
-message ShareWithID {
-    Share share = 1;
-    string share_server_id = 2;
+    int32 threshold = 1;
+    int32 num_of_shares = 2;
+    repeated bytes public_keys = 3;
 }
 
 message GenerateSharesResponse {
-    repeated ShareWithID shares = 1;
-    bytes encryption_key = 2;
+    repeated Key shares = 1;
+    Key encryption_key = 2;
 }
 
 service ShareServer {
-    rpc LoadShare(LoadShareRequest) returns (LoadShareResponse);
+    rpc StoreShare(StoreShareRequest) returns (StoreShareResponse);
     rpc Decrypt(DecryptRequest) returns (DecryptResponse);
 }
 
-message LoadShareRequest {
+message StoreShareRequest {
     string user_id = 1;
-    Share share = 2;
+    Key share = 2;
 }
 
-message LoadShareResponse {
+message StoreShareResponse {
     bool success = 1;
 }
 
 message DecryptRequest {
     string user_id = 1;
-    bytes secret = 2;  // could be partial decrypted by another share server
+    Secret secret = 2;
 }
 
 message DecryptResponse {
-    bytes partial_decrypted_secret = 1;
+    PartialDecrypted partial_decrypted_secret = 1;
 }

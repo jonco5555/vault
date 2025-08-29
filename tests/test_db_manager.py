@@ -1,9 +1,10 @@
 import pytest
 import pytest_asyncio
 from testcontainers.postgres import PostgresContainer
-from vault.db_manager import DBManager
 
-from common import types
+from vault.common import types
+from vault.manager.db_manager import DBManager
+
 
 @pytest_asyncio.fixture(scope="module")
 async def db_manager():
@@ -39,6 +40,23 @@ async def test_add_and_get_pubkey(db_manager: DBManager):
     assert result.user_id == user_id
     assert result.public_key == pubkey
 
+
+@pytest.mark.asyncio
+async def test_user_exists_true(db_manager: DBManager):
+    user_id = "user3"
+    pubkey = b"pubkeyexists"
+    await db_manager.add_pubkey(user_id, pubkey)
+    exists = await db_manager.user_exists(user_id)
+    assert exists is True
+
+
+@pytest.mark.asyncio
+async def test_user_exists_false(db_manager: DBManager):
+    user_id = "nonexistent_user"
+    exists = await db_manager.user_exists(user_id)
+    assert exists is False
+
+
 @pytest.mark.asyncio
 async def test_add_and_get_server(db_manager: DBManager):
     _container_id = "1234"
@@ -49,13 +67,12 @@ async def test_add_and_get_server(db_manager: DBManager):
     _public_key = b"publickeydata"
 
     reg_req = types.ServiceData(
-        type = _type,
-        container_id = _container_id,
-        ip_address = _ip_address,
-        public_key = _public_key,
+        type=_type,
+        container_id=_container_id,
+        ip_address=_ip_address,
+        public_key=_public_key,
     )
-    
-    
+
     await db_manager.add_server(reg_req)
     result = await db_manager.get_server(_invalid_container_id)
     assert result is None
@@ -70,7 +87,7 @@ async def test_add_and_get_server(db_manager: DBManager):
     try:
         result = await db_manager.remove_server(_invalid_container_id)
         assert False
-    except:
+    except Exception:
         pass
 
     result = await db_manager.remove_server(_container_id)

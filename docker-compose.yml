@@ -23,7 +23,7 @@ services:
       context: . # Path to the client's source code
       dockerfile: Dockerfile # Dockerfile to use for building the image
     image: vault:latest
-    command: ["python", "-m", "src.manager"]
+    command: ["python", "-m", "src.vault.manager"]
     depends_on:
       postgres:
         condition: service_healthy  # wait until postgres is healthy

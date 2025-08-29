@@ -4,9 +4,9 @@ import grpc
 import warnings
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import common.generated.setup_pb2 as setup__pb2
+import vault.common.generated.setup_pb2 as setup__pb2
 
-GRPC_GENERATED_VERSION = '1.73.1'
+GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -35,28 +35,28 @@ class SetupMasterStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Register = channel.unary_unary(
-                '/vault.SetupMaster/Register',
-                request_serializer=setup__pb2.RegisterRequest.SerializeToString,
-                response_deserializer=setup__pb2.RegisterResponse.FromString,
+        self.SetupRegister = channel.unary_unary(
+                '/vault.SetupMaster/SetupRegister',
+                request_serializer=setup__pb2.SetupRegisterRequest.SerializeToString,
+                response_deserializer=setup__pb2.SetupRegisterResponse.FromString,
                 _registered_method=True)
-        self.Unregister = channel.unary_unary(
-                '/vault.SetupMaster/Unregister',
-                request_serializer=setup__pb2.UnregisterRequest.SerializeToString,
-                response_deserializer=setup__pb2.UnregisterResponse.FromString,
+        self.SetupUnregister = channel.unary_unary(
+                '/vault.SetupMaster/SetupUnregister',
+                request_serializer=setup__pb2.SetupUnregisterRequest.SerializeToString,
+                response_deserializer=setup__pb2.SetupUnregisterResponse.FromString,
                 _registered_method=True)
 
 
 class SetupMasterServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def Register(self, request, context):
+    def SetupRegister(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def Unregister(self, request, context):
+    def SetupUnregister(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -65,15 +65,15 @@ class SetupMasterServicer(object):
 
 def add_SetupMasterServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Register': grpc.unary_unary_rpc_method_handler(
-                    servicer.Register,
-                    request_deserializer=setup__pb2.RegisterRequest.FromString,
-                    response_serializer=setup__pb2.RegisterResponse.SerializeToString,
+            'SetupRegister': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetupRegister,
+                    request_deserializer=setup__pb2.SetupRegisterRequest.FromString,
+                    response_serializer=setup__pb2.SetupRegisterResponse.SerializeToString,
             ),
-            'Unregister': grpc.unary_unary_rpc_method_handler(
-                    servicer.Unregister,
-                    request_deserializer=setup__pb2.UnregisterRequest.FromString,
-                    response_serializer=setup__pb2.UnregisterResponse.SerializeToString,
+            'SetupUnregister': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetupUnregister,
+                    request_deserializer=setup__pb2.SetupUnregisterRequest.FromString,
+                    response_serializer=setup__pb2.SetupUnregisterResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -87,7 +87,7 @@ class SetupMaster(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Register(request,
+    def SetupRegister(request,
             target,
             options=(),
             channel_credentials=None,
@@ -100,9 +100,9 @@ class SetupMaster(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/vault.SetupMaster/Register',
-            setup__pb2.RegisterRequest.SerializeToString,
-            setup__pb2.RegisterResponse.FromString,
+            '/vault.SetupMaster/SetupRegister',
+            setup__pb2.SetupRegisterRequest.SerializeToString,
+            setup__pb2.SetupRegisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -114,7 +114,7 @@ class SetupMaster(object):
             _registered_method=True)
 
     @staticmethod
-    def Unregister(request,
+    def SetupUnregister(request,
             target,
             options=(),
             channel_credentials=None,
@@ -127,9 +127,9 @@ class SetupMaster(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/vault.SetupMaster/Unregister',
-            setup__pb2.UnregisterRequest.SerializeToString,
-            setup__pb2.UnregisterResponse.FromString,
+            '/vault.SetupMaster/SetupUnregister',
+            setup__pb2.SetupUnregisterRequest.SerializeToString,
+            setup__pb2.SetupUnregisterResponse.FromString,
             options,
             channel_credentials,
             insecure,
