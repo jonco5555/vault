@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import logging
 
+from typing import Optional
+from common import types
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -27,13 +29,29 @@ class PubKey(Base):
     public_key: Mapped[bytes] = mapped_column()
 
 
+class Server(Base):
+    __tablename__ = "servers"
+    container_id: Mapped[str] = mapped_column(primary_key=True)
+    type: Mapped[int] = mapped_column()
+    ip_address: Mapped[str] = mapped_column()
+    public_key: Mapped[bytes] = mapped_column(nullable=True)
+
+
 class DBManager:
     def __init__(self, db_url: str):
         self._logger = logging.getLogger(__class__.__name__)
+        self._logger.info(f"initializing with {db_url=}")
         self._engine = create_async_engine(
             db_url, echo=True, poolclass=NullPool
         )  # TODO: Using NullPool made the tests pass, need to investigate
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
+
+    @classmethod
+    async def create(cls, db_url: str):
+        retval = cls(db_url=db_url)
+        await retval.start()
+
+        return retval
 
     async def start(self):
         self._logger.info("Creating Tables")
@@ -79,3 +97,42 @@ class DBManager:
         async with self._session() as session:
             result = await session.execute(select(PubKey).filter_by(user_id=user_id))
             return result.scalars().first() is not None
+
+    async def add_server(self, register_request: types.ServiceData):
+        self._logger.info(
+            f"Adding server with container_id={register_request.container_id}"
+        )
+        async with self._session() as session:
+            entry = Server(
+                container_id=register_request.container_id,
+                type=register_request.type,
+                ip_address=register_request.ip_address,
+                public_key=register_request.public_key,
+            )
+            session.add(entry)
+            await session.commit()
+
+    async def remove_server(self, container_id: str):
+        self._logger.info(f"Removing server with container_id={container_id}")
+        async with self._session() as session:
+            row = await session.get(Server, container_id)
+            if not row:
+                raise RuntimeError(f"Server with {container_id=} doesnt exist")
+            await session.delete(row)
+            await session.commit()
+
+    async def get_server(self, container_id: str) -> Optional[types.ServiceData]:
+        self._logger.info(f"Retrieving server data for container_id={container_id}")
+        async with self._session() as session:
+            result = await session.get(Server, container_id)
+
+            retval: Optional[types.ServiceData] = None
+            if result:
+                retval = types.ServiceData(
+                    container_id=result.container_id,
+                    type=result.type,
+                    ip_address=result.ip_address,
+                    public_key=result.public_key,
+                )
+
+            return retval

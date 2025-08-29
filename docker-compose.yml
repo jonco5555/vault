@@ -1,0 +1,39 @@
+#version: '3.8' # Specify the Docker Compose file format version
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: vault-postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: proddb
+    ports:
+      - "5432:5432"
+    networks:
+      - vault-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d proddb"]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+  manager:
+    container_name: vault-manager
+    build:
+      context: . # Path to the client's source code
+      dockerfile: Dockerfile # Dockerfile to use for building the image
+    image: vault:latest
+    command: ["python", "-m", "src.manager"]
+    depends_on:
+      postgres:
+        condition: service_healthy  # wait until postgres is healthy
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - vault-net
+networks:
+  vault-net:
+    name: vault-net
+    driver: bridge
