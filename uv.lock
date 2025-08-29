@@ -677,11 +677,12 @@ dependencies = [
     { name = "greenlet" },
     { name = "grpcio" },
     { name = "grpcio-tools" },
+    { name = "protobuf" },
     { name = "pycryptodome" },
+    { name = "pydantic" },
     { name = "pynacl" },
     { name = "sqlalchemy" },
     { name = "threshold-crypto" },
-    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -699,11 +700,12 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.2.4" },
     { name = "grpcio", specifier = ">=1.74.0" },
     { name = "grpcio-tools", specifier = ">=1.74.0" },
+    { name = "protobuf", specifier = ">=6.32.0" },
     { name = "pycryptodome", specifier = ">=3.23.0" },
+    { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pynacl", specifier = ">=1.5.0" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
     { name = "threshold-crypto", git = "https://github.com/tompetersen/threshold-crypto.git" },
-    { name = "pydantic", specifier = ">=2.11.7" },
 ]
 
 [package.metadata.requires-dev]

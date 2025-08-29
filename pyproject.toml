@@ -18,6 +18,7 @@ dependencies = [
     "threshold-crypto",
     "greenlet>=3.2.4",
     "pydantic>=2.11.7",
+    "protobuf>=6.32.0",
 ]
 
 [project.scripts]
