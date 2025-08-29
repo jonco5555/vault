@@ -17,10 +17,10 @@ class ServiceData(BaseModel):
     public_key: bytes
 
 
-def ServiceData_to_RegisterRequest(
+def ServiceData_to_SetupRegisterRequest(
     service_data: ServiceData,
-) -> setup_pb2.RegisterRequest:
-    return setup_pb2.RegisterRequest(
+) -> setup_pb2.SetupRegisterRequest:
+    return setup_pb2.SetupRegisterRequest(
         type=service_data.type,
         container_id=service_data.container_id,
         ip_address=service_data.ip_address,
@@ -28,8 +28,8 @@ def ServiceData_to_RegisterRequest(
     )
 
 
-def RegisterRequest_to_ServiceData(
-    register_request: setup_pb2.RegisterRequest,
+def SetupRegisterRequest_to_ServiceData(
+    register_request: setup_pb2.SetupRegisterRequest,
 ) -> ServiceData:
     return ServiceData(
         type=register_request.type,

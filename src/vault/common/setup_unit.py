@@ -90,7 +90,7 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupMasterStub(channel)
             resp: setup_pb2.RegisterResponse = await stub.Register(
-                types.ServiceData_to_RegisterRequest(service_data)
+                types.ServiceData_to_SetupRegisterRequest(service_data)
             )
             if not resp.is_registered:
                 raise RuntimeError(
