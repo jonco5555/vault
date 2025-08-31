@@ -37,3 +37,8 @@ def SetupRegisterRequest_to_ServiceData(
         ip_address=register_request.ip_address,
         public_key=register_request.public_key,
     )
+
+
+class Key(BaseModel):
+    x: str
+    y: str

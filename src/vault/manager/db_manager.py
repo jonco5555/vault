@@ -23,8 +23,8 @@ class Vault(Base):
     secret: Mapped[bytes] = mapped_column()
 
 
-class PubKey(Base):
-    __tablename__ = "pubkeys"
+class User(Base):
+    __tablename__ = "users"
     user_id: Mapped[str] = mapped_column(primary_key=True)
     public_key: Mapped[bytes] = mapped_column()
 
@@ -34,7 +34,7 @@ class Server(Base):
     container_id: Mapped[str] = mapped_column(primary_key=True)
     type: Mapped[int] = mapped_column()
     ip_address: Mapped[str] = mapped_column()
-    public_key: Mapped[bytes] = mapped_column(nullable=True)
+    public_key: Mapped[bytes] = mapped_column()
 
 
 class DBManager:
@@ -79,23 +79,23 @@ class DBManager:
             )
             return result.scalars().first()
 
-    async def add_pubkey(self, user_id: str, public_key: bytes):
+    async def add_user(self, user_id: str, public_key: bytes):
         self._logger.info(f"Adding public key for user_id={user_id}")
         async with self._session() as session:
-            entry = PubKey(user_id=user_id, public_key=public_key)
+            entry = User(user_id=user_id, public_key=public_key)
             session.add(entry)
             await session.commit()
 
-    async def get_pubkey(self, user_id: str):
+    async def get_user_public_key(self, user_id: str):
         self._logger.info(f"Retrieving public key for user_id={user_id}")
         async with self._session() as session:
-            result = await session.execute(select(PubKey).filter_by(user_id=user_id))
+            result = await session.execute(select(User).filter_by(user_id=user_id))
             return result.scalars().first()
 
     async def user_exists(self, user_id: str) -> bool:
         self._logger.info(f"Checking if user exists: {user_id}")
         async with self._session() as session:
-            result = await session.execute(select(PubKey).filter_by(user_id=user_id))
+            result = await session.execute(select(User).filter_by(user_id=user_id))
             return result.scalars().first() is not None
 
     async def add_server(self, register_request: ServiceData):
@@ -136,3 +136,17 @@ class DBManager:
                 )
 
             return retval
+
+    async def get_servers_keys(self) -> list[bytes]:
+        self._logger.info("Retrieving all servers public keys")
+        async with self._session() as session:
+            result = await session.execute(select(Server))
+            servers = result.scalars().all()
+            return [server.public_key for server in servers]
+
+    async def get_servers_addresses(self) -> list[str]:
+        self._logger.info("Retrieving all servers ip addresses")
+        async with self._session() as session:
+            result = await session.execute(select(Server))
+            servers = result.scalars().all()
+            return [server.ip_address for server in servers]

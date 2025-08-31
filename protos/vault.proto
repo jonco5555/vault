@@ -19,8 +19,8 @@ message Key {
 }
 
 message RegisterResponse {
-    Key share = 1;
-    Key encryption_key = 2;
+    bytes encrypted_share = 1;
+    bytes encrypted_key = 2;
 }
 
 message Secret {
@@ -65,8 +65,8 @@ message GenerateSharesRequest {
 }
 
 message GenerateSharesResponse {
-    repeated Key shares = 1;
-    Key encryption_key = 2;
+    repeated bytes encrypted_shares = 1;
+    bytes encrypted_key = 2;
 }
 
 service ShareServer {
@@ -76,7 +76,7 @@ service ShareServer {
 
 message StoreShareRequest {
     string user_id = 1;
-    Key share = 2;
+    bytes encrypted_share = 2;
 }
 
 message StoreShareResponse {

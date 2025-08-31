@@ -6,7 +6,8 @@ from threshold_crypto.data import (
     PublicKey,
 )
 
-from vault.common.generated.vault_pb2 import Key, PartialDecrypted, Secret
+from vault.common.generated.vault_pb2 import PartialDecrypted, Secret
+from vault.common.types import Key
 
 
 def generate_key_and_shares(
