@@ -1,12 +1,38 @@
+import logging
+
 import grpc
 
 from vault.common.generated.vault_pb2 import GenerateSharesResponse
-from vault.common.generated.vault_pb2_grpc import BootstrapServicer
+from vault.common.generated.vault_pb2_grpc import (
+    BootstrapServicer,
+    add_BootstrapServicer_to_server,
+)
 from vault.crypto.asymmetric import encrypt
 from vault.crypto.threshold import generate_key_and_shares
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 
 class Bootstrap(BootstrapServicer):
+    def __init__(self, port: int):
+        self._logger = logging.getLogger(__class__.__name__)
+        # grpc server
+        self._port = port
+        self._server = grpc.aio.server()
+        add_BootstrapServicer_to_server(self, self._server)
+        self._server.add_insecure_port(f"[::]:{self._port}")
+
+    async def start(self):
+        await self._server.start()
+        self._logger.info(f"Bootstrap server started on port {self._port}")
+
+    async def close(self):
+        if self._server:
+            await self._server.stop(grace=5.0)
+        self._logger.info("Bootstrap server stopped")
+
     async def GenerateShares(self, request, context):
         encryption_key, shares = generate_key_and_shares(
             request.threshold, request.num_of_shares

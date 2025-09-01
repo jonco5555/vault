@@ -6,6 +6,7 @@ from vault.common.generated.vault_pb2 import (
     StoreSecretRequest,
 )
 from vault.common.generated.vault_pb2_grpc import ManagerStub
+from vault.common.types import Key
 from vault.crypto.asymmetric import generate_key_pair
 from vault.crypto.threshold import decrypt, encrypt
 
@@ -25,7 +26,7 @@ class User:
         self._threshold = threshold
         self._num_of_share_servers = num_of_share_servers
         self._privkey_b64, self._pubkey_b64 = generate_key_pair()
-        self._share = None
+        self.encrypted_share = None
         self._encryption_key = None
         self._secrets_ids = set()
 
@@ -41,9 +42,13 @@ class User:
                 )
             )
 
-            # TODO: decrypt share with self._privkey_b64
-            self._share = response.share
-            self._encryption_key = response.encryption_key
+            self._encrypted_share = response.encrypted_share
+            self._encryption_key = Key.model_validate_json(
+                decrypt(
+                    self._encrypted_shares.get(response.encrypted_key),
+                    self._privkey_b64,
+                )
+            )
 
     async def store_secret(self, secret: str, secret_id: str) -> bool:
         self._secrets_ids.add(secret_id)

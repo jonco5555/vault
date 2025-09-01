@@ -1,16 +1,41 @@
+import logging
+
 import grpc
 
 from vault.common.generated.vault_pb2 import DecryptResponse, StoreShareResponse
-from vault.common.generated.vault_pb2_grpc import ShareServerServicer
+from vault.common.generated.vault_pb2_grpc import (
+    ShareServerServicer,
+    add_ShareServerServicer_to_server,
+)
 from vault.common.types import Key
 from vault.crypto.asymmetric import decrypt, generate_key_pair
 from vault.crypto.threshold import partial_decrypt
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 
 class ShareServer(ShareServerServicer):
-    def __init__(self):
+    def __init__(self, port: int):
+        self._logger = logging.getLogger(__class__.__name__)
+        # grpc server
+        self._port = port
+        self._server = grpc.aio.server()
+        add_ShareServerServicer_to_server(self, self._server)
+        self._server.add_insecure_port(f"[::]:{self._port}")
+
         self._privkey_b64, self._pubkey_b64 = generate_key_pair()
         self._encrypted_shares: dict[bytes] = {}
+
+    async def start(self):
+        await self._server.start()
+        self._logger.info(f"Bootstrap server started on port {self._port}")
+
+    async def close(self):
+        if self._server:
+            await self._server.stop(grace=5.0)
+        self._logger.info("Bootstrap server stopped")
 
     # TODO: Register to manager as server
 

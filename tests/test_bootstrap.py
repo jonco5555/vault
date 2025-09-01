@@ -4,7 +4,11 @@ import pytest
 from grpc_testing._server._server import _Server
 
 from vault.bootstrap.bootstrap import Bootstrap
-from vault.common.generated.vault_pb2 import DESCRIPTOR, GenerateSharesRequest
+from vault.common.generated.vault_pb2 import (
+    DESCRIPTOR,
+    GenerateSharesRequest,
+)
+from vault.common.generated.vault_pb2_grpc import BootstrapStub
 from vault.common.types import Key
 from vault.crypto.asymmetric import decrypt, generate_key_pair
 
@@ -24,7 +28,7 @@ def key_pairs(request) -> tuple[list[bytes], list[bytes]]:
 @pytest.fixture
 def bootstrap_server() -> _Server:
     servicers = {
-        DESCRIPTOR.services_by_name["Bootstrap"]: Bootstrap(),
+        DESCRIPTOR.services_by_name["Bootstrap"]: Bootstrap(0),
     }
     return grpc_testing.server_from_dictionary(
         servicers, grpc_testing.strict_real_time()
@@ -112,3 +116,30 @@ async def test_generate_shares_raises_exception_invalid_key(
     response, _, _, _ = invoke_method(request, bootstrap_server)
     with pytest.raises(ValueError):
         response = await response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("num_of_share_servers", [3])
+@pytest.mark.parametrize("key_pairs", [4], indirect=True)
+async def test_bootstrap_without_mocks(num_of_share_servers, key_pairs):
+    # Arrange
+    privs, pubs = key_pairs
+    priv_user = privs[-1]  # last key is user's key
+    server = Bootstrap(50051)
+    await server.start()
+
+    # Act
+    async with grpc.aio.insecure_channel("localhost:50051") as channel:
+        stub = BootstrapStub(channel)
+        response = await stub.GenerateShares(
+            GenerateSharesRequest(
+                threshold=num_of_share_servers + 1,  # +1 for the user
+                num_of_shares=num_of_share_servers + 1,
+                public_keys=pubs,
+            )
+        )
+    await server.close()
+
+    # Assert
+    assert len(response.encrypted_shares) == num_of_share_servers + 1
+    Key.model_validate_json(decrypt(response.encrypted_key, priv_user))
