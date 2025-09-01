@@ -38,6 +38,8 @@ class ShareServer(ShareServerServicer):
         self._logger.info("Bootstrap server stopped")
 
     # TODO: Register to manager as server
+    async def register():
+        pass
 
     async def StoreShare(self, request, context):
         if request.user_id in self._encrypted_shares:
@@ -56,4 +58,4 @@ class ShareServer(ShareServerServicer):
             decrypt(self._encrypted_shares.get(request.user_id), self._privkey_b64)
         )
         partial_decrypted = partial_decrypt(request.secret, share)
-        return DecryptResponse(partial_decrypted=partial_decrypted)
+        return DecryptResponse(partial_decrypted_secret=partial_decrypted)

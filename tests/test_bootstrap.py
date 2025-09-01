@@ -1,6 +1,7 @@
 import grpc
 import grpc_testing
 import pytest
+import pytest_asyncio
 from grpc_testing._server._server import _Server
 
 from vault.bootstrap.bootstrap import Bootstrap
@@ -76,30 +77,6 @@ async def test_generate_shares_works(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("num_of_share_servers", [3])
-@pytest.mark.parametrize("key_pairs", [2], indirect=True)
-async def test_generate_shares_returns_invalid_arg_when_different_number_of_shares_and_keys(
-    num_of_share_servers: int, key_pairs, bootstrap_server: _Server
-):
-    # Arrange
-    privs, pubs = key_pairs
-    request = GenerateSharesRequest(
-        threshold=num_of_share_servers + 1,  # +1 for the user
-        num_of_shares=num_of_share_servers + 1,
-        public_keys=pubs,
-    )
-
-    # Act
-    response, metadata, code, details = invoke_method(request, bootstrap_server)
-    response = await response
-
-    # Assert
-    # for some reason, the status code is not transferred when the rpc is async
-    # assert code == grpc.StatusCode.INVALID_ARGUMENT
-    assert not response.encrypted_shares
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("num_of_share_servers", [2])
 async def test_generate_shares_raises_exception_invalid_key(
     num_of_share_servers: int, bootstrap_server: _Server
@@ -118,28 +95,57 @@ async def test_generate_shares_raises_exception_invalid_key(
         response = await response
 
 
+@pytest_asyncio.fixture
+async def bootstrap_stub():
+    bootstrap = Bootstrap(50051)
+    await bootstrap.start()
+    async with grpc.aio.insecure_channel("localhost:50051") as channel:
+        stub = BootstrapStub(channel)
+        yield stub
+
+    await bootstrap.close()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("num_of_share_servers", [3])
 @pytest.mark.parametrize("key_pairs", [4], indirect=True)
-async def test_bootstrap_without_mocks(num_of_share_servers, key_pairs):
+async def test_generate_shares_works_without_mocks(
+    bootstrap_stub, num_of_share_servers, key_pairs
+):
     # Arrange
     privs, pubs = key_pairs
     priv_user = privs[-1]  # last key is user's key
-    server = Bootstrap(50051)
-    await server.start()
 
     # Act
-    async with grpc.aio.insecure_channel("localhost:50051") as channel:
-        stub = BootstrapStub(channel)
-        response = await stub.GenerateShares(
+    response = await bootstrap_stub.GenerateShares(
+        GenerateSharesRequest(
+            threshold=num_of_share_servers + 1,  # +1 for the user
+            num_of_shares=num_of_share_servers + 1,
+            public_keys=pubs,
+        )
+    )
+
+    # Assert
+    assert len(response.encrypted_shares) == num_of_share_servers + 1
+    Key.model_validate_json(decrypt(response.encrypted_key, priv_user))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("num_of_share_servers", [3])
+@pytest.mark.parametrize("key_pairs", [2], indirect=True)
+async def test_generate_shares_raises_invalid_arg_when_different_number_of_shares_and_keys(
+    bootstrap_stub, num_of_share_servers, key_pairs
+):
+    # Arrange
+    privs, pubs = key_pairs
+
+    # Act
+    with pytest.raises(grpc.aio.AioRpcError) as exc_info:
+        await bootstrap_stub.GenerateShares(
             GenerateSharesRequest(
                 threshold=num_of_share_servers + 1,  # +1 for the user
                 num_of_shares=num_of_share_servers + 1,
                 public_keys=pubs,
             )
         )
-    await server.close()
-
-    # Assert
-    assert len(response.encrypted_shares) == num_of_share_servers + 1
-    Key.model_validate_json(decrypt(response.encrypted_key, priv_user))
+        assert exc_info.value.code() == grpc.StatusCode.INVALID_ARGUMENT
