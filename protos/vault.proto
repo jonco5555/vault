@@ -52,6 +52,7 @@ message RetrieveSecretRequest {
 
 message RetrieveSecretResponse {
     repeated PartialDecrypted partial_decryptions = 1;
+    repeated Secret secret = 2;
 }
 
 service Bootstrap {

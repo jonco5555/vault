@@ -42,6 +42,8 @@ class ShareServer(ShareServerServicer):
         pass
 
     async def StoreShare(self, request, context):
+        # TODO: do we want to not override user's share?
+        # TODO: do we want to have an option to delete user's share?
         if request.user_id in self._encrypted_shares:
             context.set_code(grpc.StatusCode.ALREADY_EXISTS)
             context.set_details("Share for this user already exists.")

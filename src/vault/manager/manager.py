@@ -116,9 +116,9 @@ class Manager(ManagerServicer):
         if not self._validate_server_ready(
             context
         ) or not await self._validate_user_exists(request.user_id, context):
-            return StoreSecretResponse()
+            return StoreSecretResponse(success=False)
 
-        # TODO: add the request.secret fields to DB
+        # TODO: make sure .proto Secret is saved correctly in the DB
         await self._db.add_secret(request.user_id, request.secret_id, request.secret)
         return StoreSecretResponse(success=True)
 
@@ -136,17 +136,21 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_exists(request.user_id, context):
             return StoreSecretResponse()
 
+        # TODO: make sure the returned secret object is the .proto Secret
         secret = await self._db.get_secret(request.user_id, request.secret_id)
-
         if not secret:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Secret not found")
             return StoreSecretResponse()
 
-        ######################################################
-        # TODO: get partial encryptions from all share servers
-        ######################################################
+        # Get partial decryptions from share servers
+        servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
+        for server_adress in servers_addresses:
+            async with grpc.aio.insecure_channel(server_adress) as channel:
+                stub = ShareServerStub(channel)
+                response = await stub.Decrypt(user_id=request.user_id, secret=secret)
+                partial_decryptions.append(response.DecryptResponse)
         return RetrieveSecretResponse(partial_decryptions=partial_decryptions)
 
     def _validate_server_ready(self, context):

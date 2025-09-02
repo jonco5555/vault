@@ -8,7 +8,7 @@ from vault.common.generated.vault_pb2 import (
 from vault.common.generated.vault_pb2_grpc import ManagerStub
 from vault.common.types import Key
 from vault.crypto.asymmetric import generate_key_pair
-from vault.crypto.threshold import decrypt, encrypt
+from vault.crypto.threshold import decrypt, encrypt, partial_decrypt
 
 
 class User:
@@ -67,6 +67,7 @@ class User:
             return response.success
 
     async def retrieve_secret(self, secret_id: str) -> str | None:
+        # TODO: Do the user really needs to save secret_ids?
         if secret_id not in self._secrets_ids:
             print(f"Secret ID {secret_id} not found for user {self._user_id}")
             return None
@@ -86,8 +87,13 @@ class User:
         if not response.partial_decryptions:
             print(f"Failed to retrieve secret {secret_id} for user {self._user_id}")
             return None
+
+        share = Key.model_validate_json(
+            decrypt(self._encrypted_share, self._privkey_b64)
+        )
+        partial_decrypted = partial_decrypt(response.secret, share)
         decrypted_secret = decrypt(
-            response.partial_decryptions,
+            [response.partial_decryptions, partial_decrypted],
             response.secret,
             self._threshold,
             self._num_of_share_servers,
