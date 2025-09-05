@@ -1,3 +1,4 @@
+import random
 from unittest.mock import patch
 
 import grpc
@@ -32,7 +33,7 @@ def share():
 
 @pytest_asyncio.fixture
 async def server():
-    return ShareServer(50051)
+    return ShareServer(random.randint(40000, 60000))
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ def share_server(server) -> _Server:
 @pytest_asyncio.fixture
 async def share_server_stub(server):
     await server.start()
-    async with grpc.aio.insecure_channel("localhost:50051") as channel:
+    async with grpc.aio.insecure_channel(f"localhost:{server._port}") as channel:
         stub = ShareServerStub(channel)
         yield stub
 

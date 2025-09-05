@@ -1,3 +1,5 @@
+import random
+
 import grpc
 import grpc_testing
 import pytest
@@ -97,9 +99,9 @@ async def test_generate_shares_raises_exception_invalid_key(
 
 @pytest_asyncio.fixture
 async def bootstrap_stub():
-    bootstrap = Bootstrap(50051)
+    bootstrap = Bootstrap(random.randint(40000, 60000))
     await bootstrap.start()
-    async with grpc.aio.insecure_channel("localhost:50051") as channel:
+    async with grpc.aio.insecure_channel(f"localhost:{bootstrap._port}") as channel:
         stub = BootstrapStub(channel)
         yield stub
 
