@@ -64,7 +64,7 @@ def partial_decrypt_mocker():
             x="123", yc1=pb2.Key(x="456", y="789")
         )
         yield mock_partial_decrypt
-        assert mock_partial_decrypt.assert_called_once()
+        mock_partial_decrypt.assert_called_once()
 
 
 @pytest.fixture
