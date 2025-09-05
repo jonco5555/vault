@@ -32,11 +32,11 @@ async def test_add_and_get_secret(db_manager: DBManager):
 
 
 @pytest.mark.asyncio
-async def test_add_and_get_pubkey(db_manager: DBManager):
+async def test_add_user_and_get_pubkey(db_manager: DBManager):
     user_id = "user2"
     pubkey = b"publickeydata"
-    await db_manager.add_pubkey(user_id, pubkey)
-    result = await db_manager.get_pubkey(user_id)
+    await db_manager.add_user(user_id, pubkey)
+    result = await db_manager.get_user_public_key(user_id)
     assert result.user_id == user_id
     assert result.public_key == pubkey
 
@@ -45,7 +45,7 @@ async def test_add_and_get_pubkey(db_manager: DBManager):
 async def test_user_exists_true(db_manager: DBManager):
     user_id = "user3"
     pubkey = b"pubkeyexists"
-    await db_manager.add_pubkey(user_id, pubkey)
+    await db_manager.add_user(user_id, pubkey)
     exists = await db_manager.user_exists(user_id)
     assert exists is True
 
