@@ -231,6 +231,19 @@ wheels = [
 ]
 
 [[package]]
+name = "grpcio-testing"
+version = "1.74.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "grpcio" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/71/fd6357c5341bf2ab2a30a24c0331a8c2ac2a387402496d4d868d52578bf9/grpcio_testing-1.74.0.tar.gz", hash = "sha256:11dedb53a410fe3b2a2bc9a9ed9c9a6979420c93243da7d787f7ccf9a2543e37", size = 22492, upload-time = "2025-07-24T19:01:59.403Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d7/c3/0be099e3bafabb988f6b8f70c7efa2b3440442dbf7f15c7374806211b77a/grpcio_testing-1.74.0-py3-none-any.whl", hash = "sha256:92fa29b053f6921c352c3aef02e95ef7848de9c3e4011d5f646aa5dbbf985c79", size = 33182, upload-time = "2025-07-24T19:01:21.342Z" },
+]
+
+[[package]]
 name = "grpcio-tools"
 version = "1.74.0"
 source = { registry = "https://pypi.org/simple" }
@@ -687,6 +700,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "grpcio-testing" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -710,6 +724,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "grpcio-testing", specifier = ">=1.74.0" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio", specifier = ">=1.1.0" },

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bvault.proto\x12\x05vault\";\n\x0fRegisterRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0fuser_public_key\x18\x02 \x01(\x0c\"\x1b\n\x03Key\x12\t\n\x01x\x18\x01 \x01(\t\x12\t\n\x01y\x18\x02 \x01(\t\"Q\n\x10RegisterResponse\x12\x19\n\x05share\x18\x01 \x01(\x0b\x32\n.vault.Key\x12\"\n\x0e\x65ncryption_key\x18\x02 \x01(\x0b\x32\n.vault.Key\"L\n\x06Secret\x12\x16\n\x02\x63\x31\x18\x01 \x01(\x0b\x32\n.vault.Key\x12\x16\n\x02\x63\x32\x18\x02 \x01(\x0b\x32\n.vault.Key\x12\x12\n\nciphertext\x18\x03 \x01(\x0c\"6\n\x10PartialDecrypted\x12\t\n\x01x\x18\x01 \x01(\t\x12\x17\n\x03yc1\x18\x02 \x01(\x0b\x32\n.vault.Key\"W\n\x12StoreSecretRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x11\n\tsecret_id\x18\x02 \x01(\t\x12\x1d\n\x06secret\x18\x03 \x01(\x0b\x32\r.vault.Secret\"&\n\x13StoreSecretResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"O\n\x15RetrieveSecretRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x11\n\tsecret_id\x18\x02 \x01(\t\x12\x12\n\nauth_token\x18\x03 \x01(\t\"N\n\x16RetrieveSecretResponse\x12\x34\n\x13partial_decryptions\x18\x01 \x03(\x0b\x32\x17.vault.PartialDecrypted\"V\n\x15GenerateSharesRequest\x12\x11\n\tthreshold\x18\x01 \x01(\x05\x12\x15\n\rnum_of_shares\x18\x02 \x01(\x05\x12\x13\n\x0bpublic_keys\x18\x03 \x03(\x0c\"X\n\x16GenerateSharesResponse\x12\x1a\n\x06shares\x18\x01 \x03(\x0b\x32\n.vault.Key\x12\"\n\x0e\x65ncryption_key\x18\x02 \x01(\x0b\x32\n.vault.Key\"?\n\x11StoreShareRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x19\n\x05share\x18\x02 \x01(\x0b\x32\n.vault.Key\"%\n\x12StoreShareResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"@\n\x0e\x44\x65\x63ryptRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x1d\n\x06secret\x18\x02 \x01(\x0b\x32\r.vault.Secret\"L\n\x0f\x44\x65\x63ryptResponse\x12\x39\n\x18partial_decrypted_secret\x18\x01 \x01(\x0b\x32\x17.vault.PartialDecrypted2\xdb\x01\n\x07Manager\x12;\n\x08Register\x12\x16.vault.RegisterRequest\x1a\x17.vault.RegisterResponse\x12\x44\n\x0bStoreSecret\x12\x19.vault.StoreSecretRequest\x1a\x1a.vault.StoreSecretResponse\x12M\n\x0eRetrieveSecret\x12\x1c.vault.RetrieveSecretRequest\x1a\x1d.vault.RetrieveSecretResponse2Z\n\tBootstrap\x12M\n\x0eGenerateShares\x12\x1c.vault.GenerateSharesRequest\x1a\x1d.vault.GenerateSharesResponse2\x8a\x01\n\x0bShareServer\x12\x41\n\nStoreShare\x12\x18.vault.StoreShareRequest\x1a\x19.vault.StoreShareResponse\x12\x38\n\x07\x44\x65\x63rypt\x12\x15.vault.DecryptRequest\x1a\x16.vault.DecryptResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bvault.proto\x12\x05vault\";\n\x0fRegisterRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0fuser_public_key\x18\x02 \x01(\x0c\"\x1b\n\x03Key\x12\t\n\x01x\x18\x01 \x01(\t\x12\t\n\x01y\x18\x02 \x01(\t\"B\n\x10RegisterResponse\x12\x17\n\x0f\x65ncrypted_share\x18\x01 \x01(\x0c\x12\x15\n\rencrypted_key\x18\x02 \x01(\x0c\"L\n\x06Secret\x12\x16\n\x02\x63\x31\x18\x01 \x01(\x0b\x32\n.vault.Key\x12\x16\n\x02\x63\x32\x18\x02 \x01(\x0b\x32\n.vault.Key\x12\x12\n\nciphertext\x18\x03 \x01(\x0c\"6\n\x10PartialDecrypted\x12\t\n\x01x\x18\x01 \x01(\t\x12\x17\n\x03yc1\x18\x02 \x01(\x0b\x32\n.vault.Key\"W\n\x12StoreSecretRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x11\n\tsecret_id\x18\x02 \x01(\t\x12\x1d\n\x06secret\x18\x03 \x01(\x0b\x32\r.vault.Secret\"&\n\x13StoreSecretResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"O\n\x15RetrieveSecretRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x11\n\tsecret_id\x18\x02 \x01(\t\x12\x12\n\nauth_token\x18\x03 \x01(\t\"m\n\x16RetrieveSecretResponse\x12\x34\n\x13partial_decryptions\x18\x01 \x03(\x0b\x32\x17.vault.PartialDecrypted\x12\x1d\n\x06secret\x18\x02 \x03(\x0b\x32\r.vault.Secret\"V\n\x15GenerateSharesRequest\x12\x11\n\tthreshold\x18\x01 \x01(\x05\x12\x15\n\rnum_of_shares\x18\x02 \x01(\x05\x12\x13\n\x0bpublic_keys\x18\x03 \x03(\x0c\"I\n\x16GenerateSharesResponse\x12\x18\n\x10\x65ncrypted_shares\x18\x01 \x03(\x0c\x12\x15\n\rencrypted_key\x18\x02 \x01(\x0c\"=\n\x11StoreShareRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x17\n\x0f\x65ncrypted_share\x18\x02 \x01(\x0c\"%\n\x12StoreShareResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"%\n\x12\x44\x65leteShareRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\"&\n\x13\x44\x65leteShareResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\"@\n\x0e\x44\x65\x63ryptRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x1d\n\x06secret\x18\x02 \x01(\x0b\x32\r.vault.Secret\"L\n\x0f\x44\x65\x63ryptResponse\x12\x39\n\x18partial_decrypted_secret\x18\x01 \x01(\x0b\x32\x17.vault.PartialDecrypted2\xdb\x01\n\x07Manager\x12;\n\x08Register\x12\x16.vault.RegisterRequest\x1a\x17.vault.RegisterResponse\x12\x44\n\x0bStoreSecret\x12\x19.vault.StoreSecretRequest\x1a\x1a.vault.StoreSecretResponse\x12M\n\x0eRetrieveSecret\x12\x1c.vault.RetrieveSecretRequest\x1a\x1d.vault.RetrieveSecretResponse2Z\n\tBootstrap\x12M\n\x0eGenerateShares\x12\x1c.vault.GenerateSharesRequest\x1a\x1d.vault.GenerateSharesResponse2\xd0\x01\n\x0bShareServer\x12\x41\n\nStoreShare\x12\x18.vault.StoreShareRequest\x1a\x19.vault.StoreShareResponse\x12\x44\n\x0b\x44\x65leteShare\x12\x19.vault.DeleteShareRequest\x1a\x1a.vault.DeleteShareResponse\x12\x38\n\x07\x44\x65\x63rypt\x12\x15.vault.DecryptRequest\x1a\x16.vault.DecryptResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,35 +36,39 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_KEY']._serialized_start=83
   _globals['_KEY']._serialized_end=110
   _globals['_REGISTERRESPONSE']._serialized_start=112
-  _globals['_REGISTERRESPONSE']._serialized_end=193
-  _globals['_SECRET']._serialized_start=195
-  _globals['_SECRET']._serialized_end=271
-  _globals['_PARTIALDECRYPTED']._serialized_start=273
-  _globals['_PARTIALDECRYPTED']._serialized_end=327
-  _globals['_STORESECRETREQUEST']._serialized_start=329
-  _globals['_STORESECRETREQUEST']._serialized_end=416
-  _globals['_STORESECRETRESPONSE']._serialized_start=418
-  _globals['_STORESECRETRESPONSE']._serialized_end=456
-  _globals['_RETRIEVESECRETREQUEST']._serialized_start=458
-  _globals['_RETRIEVESECRETREQUEST']._serialized_end=537
-  _globals['_RETRIEVESECRETRESPONSE']._serialized_start=539
-  _globals['_RETRIEVESECRETRESPONSE']._serialized_end=617
-  _globals['_GENERATESHARESREQUEST']._serialized_start=619
-  _globals['_GENERATESHARESREQUEST']._serialized_end=705
-  _globals['_GENERATESHARESRESPONSE']._serialized_start=707
-  _globals['_GENERATESHARESRESPONSE']._serialized_end=795
-  _globals['_STORESHAREREQUEST']._serialized_start=797
-  _globals['_STORESHAREREQUEST']._serialized_end=860
-  _globals['_STORESHARERESPONSE']._serialized_start=862
-  _globals['_STORESHARERESPONSE']._serialized_end=899
-  _globals['_DECRYPTREQUEST']._serialized_start=901
-  _globals['_DECRYPTREQUEST']._serialized_end=965
-  _globals['_DECRYPTRESPONSE']._serialized_start=967
-  _globals['_DECRYPTRESPONSE']._serialized_end=1043
-  _globals['_MANAGER']._serialized_start=1046
-  _globals['_MANAGER']._serialized_end=1265
-  _globals['_BOOTSTRAP']._serialized_start=1267
-  _globals['_BOOTSTRAP']._serialized_end=1357
-  _globals['_SHARESERVER']._serialized_start=1360
-  _globals['_SHARESERVER']._serialized_end=1498
+  _globals['_REGISTERRESPONSE']._serialized_end=178
+  _globals['_SECRET']._serialized_start=180
+  _globals['_SECRET']._serialized_end=256
+  _globals['_PARTIALDECRYPTED']._serialized_start=258
+  _globals['_PARTIALDECRYPTED']._serialized_end=312
+  _globals['_STORESECRETREQUEST']._serialized_start=314
+  _globals['_STORESECRETREQUEST']._serialized_end=401
+  _globals['_STORESECRETRESPONSE']._serialized_start=403
+  _globals['_STORESECRETRESPONSE']._serialized_end=441
+  _globals['_RETRIEVESECRETREQUEST']._serialized_start=443
+  _globals['_RETRIEVESECRETREQUEST']._serialized_end=522
+  _globals['_RETRIEVESECRETRESPONSE']._serialized_start=524
+  _globals['_RETRIEVESECRETRESPONSE']._serialized_end=633
+  _globals['_GENERATESHARESREQUEST']._serialized_start=635
+  _globals['_GENERATESHARESREQUEST']._serialized_end=721
+  _globals['_GENERATESHARESRESPONSE']._serialized_start=723
+  _globals['_GENERATESHARESRESPONSE']._serialized_end=796
+  _globals['_STORESHAREREQUEST']._serialized_start=798
+  _globals['_STORESHAREREQUEST']._serialized_end=859
+  _globals['_STORESHARERESPONSE']._serialized_start=861
+  _globals['_STORESHARERESPONSE']._serialized_end=898
+  _globals['_DELETESHAREREQUEST']._serialized_start=900
+  _globals['_DELETESHAREREQUEST']._serialized_end=937
+  _globals['_DELETESHARERESPONSE']._serialized_start=939
+  _globals['_DELETESHARERESPONSE']._serialized_end=977
+  _globals['_DECRYPTREQUEST']._serialized_start=979
+  _globals['_DECRYPTREQUEST']._serialized_end=1043
+  _globals['_DECRYPTRESPONSE']._serialized_start=1045
+  _globals['_DECRYPTRESPONSE']._serialized_end=1121
+  _globals['_MANAGER']._serialized_start=1124
+  _globals['_MANAGER']._serialized_end=1343
+  _globals['_BOOTSTRAP']._serialized_start=1345
+  _globals['_BOOTSTRAP']._serialized_end=1435
+  _globals['_SHARESERVER']._serialized_start=1438
+  _globals['_SHARESERVER']._serialized_end=1646
 # @@protoc_insertion_point(module_scope)

@@ -13,6 +13,7 @@ from vault.common.generated.vault_pb2 import (
 from vault.common.generated.vault_pb2_grpc import (
     BootstrapStub,
     ManagerServicer,
+    ShareServerStub,
     add_ManagerServicer_to_server,
 )
 from vault.manager.db_manager import DBManager
@@ -68,14 +69,17 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_not_exists(request.user_id, context):
             return RegisterResponse()
 
+        public_keys = await self._db.get_servers_keys()
+        if not self._validate_num_of_servers_in_db(len(public_keys), context):
+            return RegisterResponse()
+
+        public_keys.append(request.user_public_key)
+        # Bootstrap keeps the list order, and assumes the last key is the user's key
+
+        # Sending generate shares request to bootstrap
         ########################
         # TODO: Deploy bootstrap
         ########################
-
-        public_keys = []  # TODO: get public keys from DB
-        public_keys.append(request.user_public_key)
-
-        # Sending generate shares request to bootstrap
         bootstrap_address = "bootstrap.example.com:50051"
         async with grpc.aio.insecure_channel(bootstrap_address) as channel:
             stub = BootstrapStub(channel)
@@ -86,19 +90,23 @@ class Manager(ManagerServicer):
                     public_keys=public_keys,
                 )
             )
-
         ######################
         # TODO: Kill bootstrap
         ######################
 
-        ##############################################
-        # TODO: send to all share servers their shares
-        ##############################################
+        # Get user's share, assuming it is the last one
+        user_share = response.encrypted_shares.pop()
+
+        # Send shares to share servers
+        servers_addresses = await self._db.get_servers_addresses()
+        for share, server_adress in zip(response.encrypted_shares, servers_addresses):
+            async with grpc.aio.insecure_channel(server_adress) as channel:
+                stub = ShareServerStub(channel)
+                await stub.StoreShare(encrypted_share=share, user_id=request.user_id)
 
         # Send to user his share and encryption key
-        user_share = response.shares.pop()  # Assuming last share is for the user
         return RegisterResponse(
-            share=user_share, encryption_key=response.encryption_key
+            encrypted_share=user_share, encrypted_key=response.encrypted_key
         )
 
     async def StoreSecret(self, request, context):
@@ -108,9 +116,9 @@ class Manager(ManagerServicer):
         if not self._validate_server_ready(
             context
         ) or not await self._validate_user_exists(request.user_id, context):
-            return StoreSecretResponse()
+            return StoreSecretResponse(success=False)
 
-        # TODO: add the request.secret fields to DB
+        # TODO: make sure .proto Secret is saved correctly in the DB
         await self._db.add_secret(request.user_id, request.secret_id, request.secret)
         return StoreSecretResponse(success=True)
 
@@ -128,17 +136,21 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_exists(request.user_id, context):
             return StoreSecretResponse()
 
+        # TODO: make sure the returned secret object is the .proto Secret
         secret = await self._db.get_secret(request.user_id, request.secret_id)
-
         if not secret:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Secret not found")
             return StoreSecretResponse()
 
-        ######################################################
-        # TODO: get partial encryptions from all share servers
-        ######################################################
+        # Get partial decryptions from share servers
+        servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
+        for server_adress in servers_addresses:
+            async with grpc.aio.insecure_channel(server_adress) as channel:
+                stub = ShareServerStub(channel)
+                response = await stub.Decrypt(user_id=request.user_id, secret=secret)
+                partial_decryptions.append(response.DecryptResponse)
         return RetrieveSecretResponse(partial_decryptions=partial_decryptions)
 
     def _validate_server_ready(self, context):
@@ -162,5 +174,15 @@ class Manager(ManagerServicer):
             self._logger.debug(f"User {user_id} already exists")
             context.set_code(grpc.StatusCode.ALREADY_EXISTS)
             context.set_details("User already exists")
+            return False
+        return True
+
+    async def _validate_num_of_servers_in_db(self, num_in_db: int, context):
+        if num_in_db != self._num_of_share_servers:
+            self._logger.debug(
+                f"Not enough share servers registered. Required: {self._num_of_share_servers}, Available: {num_in_db}"
+            )
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            context.set_details("Not enough share servers registered")
             return False
         return True

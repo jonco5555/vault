@@ -6,12 +6,14 @@ from threshold_crypto.data import (
     PublicKey,
 )
 
-from vault.common.generated.vault_pb2 import Key, PartialDecrypted, Secret
+from vault.common import types
+from vault.common.generated import vault_pb2 as pb2
+from vault.common.generated.vault_pb2 import PartialDecrypted, Secret
 
 
 def generate_key_and_shares(
     threshold: int, num_of_shares: int
-) -> tuple[Key, list[Key]]:
+) -> tuple[types.Key, list[types.Key]]:
     """
     Generates an encryption key and its threshold shares.
 
@@ -27,12 +29,12 @@ def generate_key_and_shares(
     )
     pub_key: PublicKey
     key_shares: list[KeyShare]
-    encryption_key = Key(x=str(pub_key.Q.x), y=str(pub_key.Q.y))
-    shares = [Key(x=str(s.x), y=str(s.y)) for s in key_shares]
+    encryption_key = types.Key(x=str(pub_key.Q.x), y=str(pub_key.Q.y))
+    shares = [types.Key(x=str(s.x), y=str(s.y)) for s in key_shares]
     return encryption_key, shares
 
 
-def encrypt(message: str, encryption_key: Key) -> Secret:
+def encrypt(message: str, encryption_key: types.Key) -> Secret:
     """
     Encrypts a message using the provided encryption key.
 
@@ -47,13 +49,13 @@ def encrypt(message: str, encryption_key: Key) -> Secret:
         message, PublicKey(EccPoint(int(encryption_key.x), int(encryption_key.y)))
     )
     return Secret(  # TODO: create Pydantic model if needed
-        c1=Key(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
-        c2=Key(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
+        c1=pb2.Key(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
+        c2=pb2.Key(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
         ciphertext=encrypted_message.ciphertext,
     )
 
 
-def partial_decrypt(secret: Secret, share: Key) -> PartialDecrypted:
+def partial_decrypt(secret: Secret, share: types.Key) -> PartialDecrypted:
     """
     Performs a partial decryption of a secret using a given share.
 
@@ -74,7 +76,7 @@ def partial_decrypt(secret: Secret, share: Key) -> PartialDecrypted:
     )
     return PartialDecrypted(
         x=str(partial_decrypted.x),
-        yc1=Key(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
+        yc1=pb2.Key(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
     )
 
 
