@@ -2,7 +2,11 @@ import logging
 
 import grpc
 
-from vault.common.generated.vault_pb2 import DecryptResponse, StoreShareResponse
+from vault.common.generated.vault_pb2 import (
+    DecryptResponse,
+    DeleteShareResponse,
+    StoreShareResponse,
+)
 from vault.common.generated.vault_pb2_grpc import (
     ShareServerServicer,
     add_ShareServerServicer_to_server,
@@ -42,14 +46,20 @@ class ShareServer(ShareServerServicer):
         pass
 
     async def StoreShare(self, request, context):
-        # TODO: do we want to not override user's share?
-        # TODO: do we want to have an option to delete user's share?
         if request.user_id in self._encrypted_shares:
             context.set_code(grpc.StatusCode.ALREADY_EXISTS)
             context.set_details("Share for this user already exists.")
             return StoreShareResponse(success=False)
         self._encrypted_shares[request.user_id] = request.encrypted_share
         return StoreShareResponse(success=True)
+
+    async def DeleteShare(self, request, context):
+        if request.user_id not in self._encrypted_shares:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("Share does not exist for this user")
+            return DeleteShareResponse(success=False)
+        del self._encrypted_shares[request.user_id]
+        return DeleteShareResponse(success=True)
 
     async def Decrypt(self, request, context):
         if request.user_id not in self._encrypted_shares:

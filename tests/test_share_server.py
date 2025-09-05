@@ -85,6 +85,11 @@ def decrypt_request(user_id):
     )
 
 
+@pytest.fixture
+def delete_request(user_id):
+    return StoreShareRequest(user_id=user_id)
+
+
 def invoke_method(request, server: _Server, method: str):
     method_descriptor = DESCRIPTOR.services_by_name["ShareServer"].methods_by_name[
         method
@@ -161,6 +166,34 @@ async def test_decrypt_not_found(share_server_stub, decrypt_request):
     # Act
     with pytest.raises(grpc.aio.AioRpcError) as exc_info:
         await share_server_stub.Decrypt(decrypt_request)
+
+        # Assert
+        assert exc_info.value.code() == grpc.StatusCode.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_delete_success_with_mocked_share_server(
+    share_server: _Server,
+    store_request,
+    delete_request,
+):
+    # Act
+    # Store first
+    store_response = await invoke_method(store_request, share_server, "StoreShare")[0]
+    assert store_response.success
+    # Decrypt
+    response, _, code, _ = invoke_method(delete_request, share_server, "DeleteShare")
+    response = await response
+
+    # Assert
+    assert code == grpc.StatusCode.OK
+
+
+@pytest.mark.asyncio
+async def test_delete_not_found(share_server_stub, delete_request):
+    # Act
+    with pytest.raises(grpc.aio.AioRpcError) as exc_info:
+        await share_server_stub.DeleteShare(delete_request)
 
         # Assert
         assert exc_info.value.code() == grpc.StatusCode.NOT_FOUND

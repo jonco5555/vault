@@ -269,6 +269,11 @@ class ShareServerStub(object):
                 request_serializer=vault__pb2.StoreShareRequest.SerializeToString,
                 response_deserializer=vault__pb2.StoreShareResponse.FromString,
                 _registered_method=True)
+        self.DeleteShare = channel.unary_unary(
+                '/vault.ShareServer/DeleteShare',
+                request_serializer=vault__pb2.DeleteShareRequest.SerializeToString,
+                response_deserializer=vault__pb2.DeleteShareResponse.FromString,
+                _registered_method=True)
         self.Decrypt = channel.unary_unary(
                 '/vault.ShareServer/Decrypt',
                 request_serializer=vault__pb2.DecryptRequest.SerializeToString,
@@ -280,6 +285,12 @@ class ShareServerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def StoreShare(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteShare(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -298,6 +309,11 @@ def add_ShareServerServicer_to_server(servicer, server):
                     servicer.StoreShare,
                     request_deserializer=vault__pb2.StoreShareRequest.FromString,
                     response_serializer=vault__pb2.StoreShareResponse.SerializeToString,
+            ),
+            'DeleteShare': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteShare,
+                    request_deserializer=vault__pb2.DeleteShareRequest.FromString,
+                    response_serializer=vault__pb2.DeleteShareResponse.SerializeToString,
             ),
             'Decrypt': grpc.unary_unary_rpc_method_handler(
                     servicer.Decrypt,
@@ -332,6 +348,33 @@ class ShareServer(object):
             '/vault.ShareServer/StoreShare',
             vault__pb2.StoreShareRequest.SerializeToString,
             vault__pb2.StoreShareResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteShare(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/vault.ShareServer/DeleteShare',
+            vault__pb2.DeleteShareRequest.SerializeToString,
+            vault__pb2.DeleteShareResponse.FromString,
             options,
             channel_credentials,
             insecure,

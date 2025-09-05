@@ -72,6 +72,7 @@ message GenerateSharesResponse {
 
 service ShareServer {
     rpc StoreShare(StoreShareRequest) returns (StoreShareResponse);
+    rpc DeleteShare(DeleteShareRequest) returns (DeleteShareResponse);
     rpc Decrypt(DecryptRequest) returns (DecryptResponse);
 }
 
@@ -81,6 +82,14 @@ message StoreShareRequest {
 }
 
 message StoreShareResponse {
+    bool success = 1;
+}
+
+message DeleteShareRequest {
+    string user_id = 1;
+}
+
+message DeleteShareResponse {
     bool success = 1;
 }
 
