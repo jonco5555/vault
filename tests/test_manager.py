@@ -25,7 +25,7 @@ def db() -> typing.Generator[PostgresContainer, None, None]:
 
 
 @pytest_asyncio.fixture
-async def manager(db: PostgresContainer):
+async def manager(db: PostgresContainer) -> typing.AsyncGenerator[Manager, None, None]:
     manager = Manager(
         port=random.randint(40000, 60000),
         db_host=db.get_container_host_ip(),
@@ -62,7 +62,7 @@ def invoke_method(request, server: _Server, method: str):
 
 
 @pytest.mark.asyncio
-async def test_store_secret_works(manager, manager_server: _Server):
+async def test_store_secret_works(manager: Manager, manager_server: _Server):
     # Arrange
     request = StoreSecretRequest(
         user_id="user1",
@@ -84,6 +84,8 @@ async def test_store_secret_works(manager, manager_server: _Server):
     # Assert
     assert code == grpc.StatusCode.OK
     assert response.success
+    print(await manager._db.get_secret("user1", "secret1"))
+    print(request.secret.SerializeToString())
     assert (
         await manager._db.get_secret("user1", "secret1")
         == request.secret.SerializeToString()
