@@ -41,7 +41,7 @@ async def manager(db: PostgresContainer):
 
 
 @pytest.fixture
-def manager_mocked(manager) -> _Server:
+def manager_server(manager) -> _Server:
     servicers = {
         DESCRIPTOR.services_by_name["Manager"]: manager,
     }
@@ -62,7 +62,7 @@ def invoke_method(request, server: _Server, method: str):
 
 
 @pytest.mark.asyncio
-async def test_store_secret_works(manager_mocked: _Server):
+async def test_store_secret_works(manager, manager_server: _Server):
     # Arrange
     request = StoreSecretRequest(
         user_id="user1",
@@ -78,15 +78,13 @@ async def test_store_secret_works(manager_mocked: _Server):
         patch.object(Manager, "_validate_user_exists", return_value=True),
     ):
         # Act
-        response, _, code, _ = invoke_method(request, manager_mocked, "StoreSecret")
+        response, _, code, _ = invoke_method(request, manager_server, "StoreSecret")
         response = await response
 
     # Assert
     assert code == grpc.StatusCode.OK
     assert response.success
     assert (
-        await manager_mocked._servicers[
-            DESCRIPTOR.services_by_name["Manager"]
-        ]._db.get_secret("user1", "secret1")
-        == request.secret
+        await manager._db.get_secret("user1", "secret1")
+        == request.secret.SerializeToString()
     )
