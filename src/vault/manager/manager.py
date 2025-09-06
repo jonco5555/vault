@@ -146,14 +146,12 @@ class Manager(ManagerServicer):
 
         # Get secret from DB
         bytes_secret = await self._db.get_secret(request.user_id, request.secret_id)
-        logging.error(f"Bytes secret: {bytes_secret}")
         if not bytes_secret:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Secret not found")
             return StoreSecretResponse()
         secret = Secret()
         secret.ParseFromString(bytes_secret)
-        logging.error(f"Proto secret: {secret}")
 
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
@@ -163,7 +161,6 @@ class Manager(ManagerServicer):
                 stub = ShareServerStub(channel)
                 response = await stub.Decrypt(user_id=request.user_id, secret=secret)
                 partial_decryptions.append(response.DecryptResponse)
-        logging.error(f"Proto secret 2: {secret}")
         return RetrieveSecretResponse(
             partial_decryptions=partial_decryptions, secret=secret
         )

@@ -106,22 +106,6 @@ async def test_retrieve_secret_works(manager: Manager, manager_server: _Server):
         user_id=user_id, secret_id=secret_id, auth_token="token"
     )
 
-    # Patch DB and ShareServerStub
-    # partial_decrypt = PartialDecrypted(data=b"partial")
-    # fake_server_addresses = ["localhost:50051", "localhost:50052", "localhost:50053"]
-    # fake_decrypt_response = AsyncMock()
-    # fake_decrypt_response.DecryptResponse = partial_decrypt
-
-    # with (
-    #     patch.object(
-    #         manager._db, "get_servers_addresses", return_value=fake_server_addresses
-    #     ),
-    #     patch("vault.manager.manager.ShareServerStub") as mock_stub,
-    # ):
-    #     mock_stub.return_value.Decrypt = AsyncMock(return_value=fake_decrypt_response)
-    #     request = RetrieveSecretRequest(
-    #         user_id=user_id, secret_id=secret_id, auth_token="token"
-    #     )
     response, _, code, _ = invoke_method(request, manager_server, "RetrieveSecret")
     response = await response
 
