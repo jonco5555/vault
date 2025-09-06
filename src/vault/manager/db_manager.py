@@ -5,7 +5,6 @@ from sqlalchemy import NullPool, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from vault.common.generated.vault_pb2 import Secret
 from vault.common.types import ServiceData
 
 logging.basicConfig(
@@ -21,7 +20,7 @@ class Vault(Base):
     __tablename__ = "vault"
     user_id: Mapped[str] = mapped_column(primary_key=True)
     secret_id: Mapped[str] = mapped_column(primary_key=True)
-    secret: Mapped[Secret] = mapped_column()
+    secret: Mapped[bytes] = mapped_column()
 
 
 class User(Base):

@@ -8,6 +8,7 @@ from vault.common.generated.vault_pb2 import (
     PartialDecrypted,
     RegisterResponse,
     RetrieveSecretResponse,
+    Secret,
     StoreSecretResponse,
 )
 from vault.common.generated.vault_pb2_grpc import (
@@ -119,7 +120,9 @@ class Manager(ManagerServicer):
             return StoreSecretResponse(success=False)
 
         # TODO: make sure .proto Secret is saved correctly in the DB
-        await self._db.add_secret(request.user_id, request.secret_id, request.secret)
+        await self._db.add_secret(
+            request.user_id, request.secret_id, request.secret.SerializeToString()
+        )
         return StoreSecretResponse(success=True)
 
     async def RetrieveSecret(self, request, context):
@@ -142,6 +145,7 @@ class Manager(ManagerServicer):
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Secret not found")
             return StoreSecretResponse()
+        secret = Secret().ParseFromString(secret)
 
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
@@ -151,7 +155,9 @@ class Manager(ManagerServicer):
                 stub = ShareServerStub(channel)
                 response = await stub.Decrypt(user_id=request.user_id, secret=secret)
                 partial_decryptions.append(response.DecryptResponse)
-        return RetrieveSecretResponse(partial_decryptions=partial_decryptions)
+        return RetrieveSecretResponse(
+            partial_decryptions=partial_decryptions, secret=secret
+        )
 
     def _validate_server_ready(self, context):
         if not self._ready:
