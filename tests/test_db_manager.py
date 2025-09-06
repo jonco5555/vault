@@ -3,6 +3,8 @@ import pytest_asyncio
 from testcontainers.postgres import PostgresContainer
 
 from vault.common import types
+from vault.common.generated import vault_pb2 as pb2
+from vault.common.generated.vault_pb2 import Secret
 from vault.manager.db_manager import DBManager
 
 
@@ -23,7 +25,11 @@ async def db_manager():
 async def test_add_and_get_secret(db_manager: DBManager):
     user_id = "user1"
     secret_id = "sec1"
-    secret = b"supersecret"
+    secret = Secret(
+        c1=pb2.Key(x="1234", y="2345"),
+        c2=pb2.Key(x="3456", y="4567"),
+        ciphertext=b"ciphertext",
+    )
     await db_manager.add_secret(user_id, secret_id, secret)
     result = await db_manager.get_secret(user_id, secret_id)
     assert result.user_id == user_id
