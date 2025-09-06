@@ -61,6 +61,7 @@ def invoke_method(request, server: _Server, method: str):
     return rpc.termination()
 
 
+@pytest.mark.asyncio
 async def test_store_secret_works(manager_mocked: _Server):
     # Arrange
     request = StoreSecretRequest(
