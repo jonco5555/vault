@@ -1,4 +1,4 @@
-import random
+import logging
 import typing
 from unittest.mock import patch
 
@@ -27,7 +27,7 @@ def db() -> typing.Generator[PostgresContainer, None, None]:
 @pytest_asyncio.fixture
 async def manager(db: PostgresContainer):
     manager = Manager(
-        port=random.randint(40000, 60000),
+        port=0,
         db_host=db.get_container_host_ip(),
         db_port=db.get_exposed_port(5432),
         db_username=db.username,
@@ -84,8 +84,8 @@ async def test_store_secret_works(manager: Manager, manager_server: _Server):
     # Assert
     assert code == grpc.StatusCode.OK
     assert response.success
-    print(await manager._db.get_secret("user1", "secret1"))
-    print(request.secret.SerializeToString())
+    logging.error(await manager._db.get_secret("user1", "secret1"))
+    logging.error(request.secret.SerializeToString())
     assert (
         await manager._db.get_secret("user1", "secret1")
         == request.secret.SerializeToString()

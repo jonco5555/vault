@@ -1,4 +1,3 @@
-import random
 from unittest.mock import patch
 
 import grpc
@@ -33,7 +32,7 @@ def share():
 
 @pytest_asyncio.fixture
 async def server():
-    return ShareServer(random.randint(40000, 60000))
+    return ShareServer(0)
 
 
 @pytest.fixture

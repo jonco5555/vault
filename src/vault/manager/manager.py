@@ -40,7 +40,7 @@ class Manager(ManagerServicer):
         self._port = port
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
 
         # DB
         self._db = DBManager(
