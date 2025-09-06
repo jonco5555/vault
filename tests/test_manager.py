@@ -25,7 +25,7 @@ def db() -> typing.Generator[PostgresContainer, None, None]:
 
 
 @pytest_asyncio.fixture
-async def manager(db: PostgresContainer) -> typing.AsyncGenerator[Manager, None, None]:
+async def manager(db: PostgresContainer):
     manager = Manager(
         port=random.randint(40000, 60000),
         db_host=db.get_container_host_ip(),
