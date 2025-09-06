@@ -35,8 +35,7 @@ async def test_add_user_and_get_pubkey(db_manager: DBManager):
     pubkey = b"publickeydata"
     await db_manager.add_user(user_id, pubkey)
     result = await db_manager.get_user_public_key(user_id)
-    assert result.user_id == user_id
-    assert result.public_key == pubkey
+    assert result == pubkey
 
 
 @pytest.mark.asyncio

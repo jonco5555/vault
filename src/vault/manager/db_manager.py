@@ -77,8 +77,7 @@ class DBManager:
             result = await session.execute(
                 select(Vault.secret).filter_by(user_id=user_id, secret_id=secret_id)
             )
-            secret = result.scalar()
-            return secret
+            return result.scalar()
 
     async def add_user(self, user_id: str, public_key: bytes):
         self._logger.info(f"Adding public key for user_id={user_id}")
@@ -90,8 +89,10 @@ class DBManager:
     async def get_user_public_key(self, user_id: str):
         self._logger.info(f"Retrieving public key for user_id={user_id}")
         async with self._session() as session:
-            result = await session.execute(select(User).filter_by(user_id=user_id))
-            return result.scalars().first()
+            result = await session.execute(
+                select(User.public_key).filter_by(user_id=user_id)
+            )
+            return result.scalar()
 
     async def user_exists(self, user_id: str) -> bool:
         self._logger.info(f"Checking if user exists: {user_id}")

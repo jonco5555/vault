@@ -70,17 +70,22 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_not_exists(request.user_id, context):
             return RegisterResponse()
 
+        # Add user to DB
+        await self._db.add_user(request.user_id, request.user_public_key)
+
+        # Get public keys of share servers
         public_keys = await self._db.get_servers_keys()
         if not self._validate_num_of_servers_in_db(len(public_keys), context):
             return RegisterResponse()
 
+        # Add user's public key to the end of the list, where the bootstrap expects it
         public_keys.append(request.user_public_key)
-        # Bootstrap keeps the list order, and assumes the last key is the user's key
 
-        # Sending generate shares request to bootstrap
         ########################
         # TODO: Deploy bootstrap
         ########################
+
+        # Sending generate shares request to bootstrap
         bootstrap_address = "bootstrap.example.com:50051"
         async with grpc.aio.insecure_channel(bootstrap_address) as channel:
             stub = BootstrapStub(channel)
@@ -139,7 +144,7 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_exists(request.user_id, context):
             return StoreSecretResponse()
 
-        # TODO: make sure the returned secret object is the .proto Secret
+        # Get secret from DB
         secret = await self._db.get_secret(request.user_id, request.secret_id)
         if not secret:
             context.set_code(grpc.StatusCode.NOT_FOUND)
