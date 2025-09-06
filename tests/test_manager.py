@@ -17,7 +17,7 @@ from vault.common.generated.vault_pb2 import (
 from vault.manager.manager import Manager
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture
 def db() -> typing.Generator[PostgresContainer, None, None]:
     with PostgresContainer("postgres:16") as container:
         yield container
