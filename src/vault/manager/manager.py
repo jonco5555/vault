@@ -160,7 +160,7 @@ class Manager(ManagerServicer):
             async with grpc.aio.insecure_channel(server_adress) as channel:
                 stub = ShareServerStub(channel)
                 response = await stub.Decrypt(user_id=request.user_id, secret=secret)
-                partial_decryptions.append(response.DecryptResponse)
+                partial_decryptions.append(response.partial_decrypted_secret)
         return RetrieveSecretResponse(
             partial_decryptions=partial_decryptions, secret=secret
         )
