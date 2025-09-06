@@ -26,9 +26,7 @@ async def test_add_and_get_secret(db_manager: DBManager):
     secret = b"supersecret"
     await db_manager.add_secret(user_id, secret_id, secret)
     result = await db_manager.get_secret(user_id, secret_id)
-    assert result.user_id == user_id
-    assert result.secret_id == secret_id
-    assert result.secret == secret
+    assert result == secret
 
 
 @pytest.mark.asyncio

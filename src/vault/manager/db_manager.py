@@ -75,9 +75,10 @@ class DBManager:
         )
         async with self._session() as session:
             result = await session.execute(
-                select(Vault).filter_by(user_id=user_id, secret_id=secret_id)
+                select(Vault.secret).filter_by(user_id=user_id, secret_id=secret_id)
             )
-            return result.scalars().first()
+            secret = result.scalar()
+            return secret
 
     async def add_user(self, user_id: str, public_key: bytes):
         self._logger.info(f"Adding public key for user_id={user_id}")

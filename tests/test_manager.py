@@ -1,4 +1,3 @@
-import logging
 import typing
 from unittest.mock import patch
 
@@ -84,8 +83,6 @@ async def test_store_secret_works(manager: Manager, manager_server: _Server):
     # Assert
     assert code == grpc.StatusCode.OK
     assert response.success
-    logging.error(await manager._db.get_secret("user1", "secret1"))
-    logging.error(request.secret.SerializeToString())
     assert (
         await manager._db.get_secret("user1", "secret1")
         == request.secret.SerializeToString()
