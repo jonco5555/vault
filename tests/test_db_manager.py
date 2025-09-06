@@ -6,7 +6,7 @@ from vault.common import types
 from vault.manager.db_manager import DBManager
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture
 async def db_manager(db: PostgresContainer):
     db_url = db.get_connection_url().replace(
         "postgresql+psycopg2://", "postgresql+asyncpg://", 1
