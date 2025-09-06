@@ -7,16 +7,15 @@ from vault.manager.db_manager import DBManager
 
 
 @pytest_asyncio.fixture(scope="module")
-async def db_manager():
-    with PostgresContainer("postgres:16") as container:
-        db_url = container.get_connection_url().replace(
-            "postgresql+psycopg2://", "postgresql+asyncpg://", 1
-        )
-        print(f"Using database URL: {db_url}")
-        db = DBManager(db_url)
-        await db.start()
-        yield db
-        await db.close()
+async def db_manager(db: PostgresContainer):
+    db_url = db.get_connection_url().replace(
+        "postgresql+psycopg2://", "postgresql+asyncpg://", 1
+    )
+    print(f"Using database URL: {db_url}")
+    db = DBManager(db_url)
+    await db.start()
+    yield db
+    await db.close()
 
 
 @pytest.mark.asyncio

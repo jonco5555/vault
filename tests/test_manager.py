@@ -7,7 +7,6 @@ import pytest_asyncio
 from grpc_testing._server._server import _Server
 from testcontainers.postgres import PostgresContainer
 
-from vault.common.generated import vault_pb2 as pb2
 from vault.common.generated.vault_pb2 import (
     DESCRIPTOR,
     RetrieveSecretRequest,
@@ -17,14 +16,13 @@ from vault.common.generated.vault_pb2 import (
 from vault.manager.manager import Manager
 
 
-@pytest_asyncio.fixture
-def db() -> typing.Generator[PostgresContainer, None, None]:
-    with PostgresContainer("postgres:16") as container:
-        yield container
+@pytest.fixture
+def secret_id() -> str:
+    return "secret1"
 
 
 @pytest_asyncio.fixture
-async def manager(db: PostgresContainer):
+async def manager(db: PostgresContainer) -> typing.AsyncGenerator[Manager, None]:
     manager = Manager(
         port=0,
         db_host=db.get_container_host_ip(),
@@ -62,19 +60,20 @@ def invoke_method(request, server: _Server, method: str):
 
 
 @pytest.mark.asyncio
-async def test_store_secret_works(manager: Manager, manager_server: _Server):
+async def test_store_secret_works(
+    user_id: str,
+    manager: Manager,
+    manager_server: _Server,
+    secret: Secret,
+    secret_id: str,
+):
     # Arrange
-    user_id = "user1"
-    await manager._db.add_user(user_id, b"user_pubkey")
     request = StoreSecretRequest(
         user_id=user_id,
-        secret_id="secret1",
-        secret=Secret(
-            c1=pb2.Key(x="1234", y="2345"),
-            c2=pb2.Key(x="3456", y="4567"),
-            ciphertext=b"ciphertext",
-        ),
+        secret_id=secret_id,
+        secret=secret,
     )
+    await manager._db.add_user(user_id, b"user_pubkey")
 
     # Act
     response, _, code, _ = invoke_method(request, manager_server, "StoreSecret")
@@ -84,28 +83,26 @@ async def test_store_secret_works(manager: Manager, manager_server: _Server):
     assert code == grpc.StatusCode.OK
     assert response.success
     assert (
-        await manager._db.get_secret("user1", "secret1")
-        == request.secret.SerializeToString()
+        await manager._db.get_secret(user_id, secret_id) == secret.SerializeToString()
     )
 
 
 @pytest.mark.asyncio
-async def test_retrieve_secret_works(manager: Manager, manager_server: _Server):
+async def test_retrieve_secret_works(
+    manager: Manager,
+    manager_server: _Server,
+    secret: Secret,
+    user_id: str,
+    secret_id: str,
+):
     # Arrange
-    user_id = "user1"
-    secret_id = "secret1"
-    secret = Secret(
-        c1=pb2.Key(x="1234", y="2345"),
-        c2=pb2.Key(x="3456", y="4567"),
-        ciphertext=b"ciphertext",
-    )
-    # Add user and secret to DB
     await manager._db.add_user(user_id, b"user_pubkey")
     await manager._db.add_secret(user_id, secret_id, secret.SerializeToString())
     request = RetrieveSecretRequest(
         user_id=user_id, secret_id=secret_id, auth_token="token"
     )
 
+    # Act
     response, _, code, _ = invoke_method(request, manager_server, "RetrieveSecret")
     response = await response
 
