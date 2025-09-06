@@ -145,12 +145,13 @@ class Manager(ManagerServicer):
             return StoreSecretResponse()
 
         # Get secret from DB
-        secret = await self._db.get_secret(request.user_id, request.secret_id)
-        if not secret:
+        bytes_secret = await self._db.get_secret(request.user_id, request.secret_id)
+        if not bytes_secret:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Secret not found")
             return StoreSecretResponse()
-        secret = Secret().ParseFromString(secret)
+        secret = Secret()
+        secret.ParseFromString(bytes_secret)
 
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
