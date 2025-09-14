@@ -598,6 +598,15 @@ wheels = [
 ]
 
 [[package]]
+name = "six"
+version = "1.17.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.43"
 source = { registry = "https://pypi.org/simple" }
@@ -624,6 +633,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b6/e4/bd78b01919c524f190b4905d47e7630bf4130b9f48fd971ae1c6225b6f6a/sqlalchemy-2.0.43-cp313-cp313-win32.whl", hash = "sha256:7f1ac7828857fcedb0361b48b9ac4821469f7694089d15550bbcf9ab22564a1d", size = 2096718, upload-time = "2025-08-11T15:55:05.349Z" },
     { url = "https://files.pythonhosted.org/packages/ac/a5/ca2f07a2a201f9497de1928f787926613db6307992fe5cda97624eb07c2f/sqlalchemy-2.0.43-cp313-cp313-win_amd64.whl", hash = "sha256:971ba928fcde01869361f504fcff3b7143b47d30de188b11c6357c0505824197", size = 2123200, upload-time = "2025-08-11T15:55:07.932Z" },
     { url = "https://files.pythonhosted.org/packages/b8/d9/13bdde6521f322861fab67473cec4b1cc8999f3871953531cf61945fad92/sqlalchemy-2.0.43-py3-none-any.whl", hash = "sha256:1681c21dd2ccee222c2fe0bef671d1aef7c504087c9c4e800371cfcc8ac966fc", size = 1924759, upload-time = "2025-08-11T15:39:53.024Z" },
+]
+
+[[package]]
+name = "srptools"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a1/8a/d62af55a56d56216e96563bc9c29c2d16d957317742c2e5bd4e79a524b06/srptools-1.0.1.tar.gz", hash = "sha256:7fa4337256a1542e8f5bb4bed19e1d9aea98fe5ff9baf76693342a1dd6ac7c96", size = 15436, upload-time = "2020-09-12T02:06:28.244Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/b8/3f935d7f7d6bc25a88859beb0a6e246313012a12ae4844665322f771a5cb/srptools-1.0.1-py2.py3-none-any.whl", hash = "sha256:fccb44c949eb2507ba19f349a3087cb8fed2393014d7f0887b06c3186f19d1e9", size = 13183, upload-time = "2020-09-12T02:06:30.452Z" },
 ]
 
 [[package]]
@@ -695,6 +716,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pynacl" },
     { name = "sqlalchemy" },
+    { name = "srptools" },
     { name = "threshold-crypto" },
 ]
 
@@ -719,6 +741,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pynacl", specifier = ">=1.5.0" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
+    { name = "srptools", specifier = ">=1.0.1" },
     { name = "threshold-crypto", git = "https://github.com/tompetersen/threshold-crypto.git" },
 ]
 
