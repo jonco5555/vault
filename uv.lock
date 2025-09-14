@@ -908,6 +908,18 @@ wheels = [
 ]
 
 [[package]]
+name = "srptools"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a1/8a/d62af55a56d56216e96563bc9c29c2d16d957317742c2e5bd4e79a524b06/srptools-1.0.1.tar.gz", hash = "sha256:7fa4337256a1542e8f5bb4bed19e1d9aea98fe5ff9baf76693342a1dd6ac7c96", size = 15436, upload-time = "2020-09-12T02:06:28.244Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/b8/3f935d7f7d6bc25a88859beb0a6e246313012a12ae4844665322f771a5cb/srptools-1.0.1-py2.py3-none-any.whl", hash = "sha256:fccb44c949eb2507ba19f349a3087cb8fed2393014d7f0887b06c3186f19d1e9", size = 13183, upload-time = "2020-09-12T02:06:30.452Z" },
+]
+
+[[package]]
 name = "testcontainers"
 version = "4.12.0"
 source = { registry = "https://pypi.org/simple" }
@@ -976,6 +988,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pynacl" },
     { name = "sqlalchemy" },
+    { name = "srptools" },
     { name = "threshold-crypto" },
 ]
 
@@ -1005,6 +1018,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pynacl", specifier = ">=1.5.0" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
+    { name = "srptools", specifier = ">=1.0.1" },
     { name = "threshold-crypto", git = "https://github.com/tompetersen/threshold-crypto.git" },
 ]
 
