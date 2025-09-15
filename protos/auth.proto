@@ -1,0 +1,67 @@
+syntax = "proto3";
+package auth;
+
+service AuthService {
+  // Register username over SRP protocol
+  rpc AuthRegister(AuthRegisterRequest) returns (AuthRegisterResponse);
+
+  // Single bidirectional stream: SRP login handshake + authenticated application request/response
+  rpc SecureCall(stream SecureReqMsgWrapper) returns (stream SecureRespMsgWrapper);
+}
+
+message AuthRegisterRequest {
+  string username = 1;
+  bytes verifier = 2;
+  bytes salt = 3;
+}
+
+message AuthRegisterResponse {
+  bool ok = 1;
+  string err = 2;
+}
+
+// wrapper for a real meassage
+message SRPFirstStep {
+  string username = 1;
+}
+
+message SRPSecondStep {
+  bytes server_public_key = 1;
+  bytes salt = 2;
+}
+
+message SRPThirdStep {
+  bytes client_public_key = 1;
+  bytes client_session_key_proof = 2;
+}
+
+message SRPThirdStepAck {
+  bool ok = 1;
+  string err = 2;
+}
+
+message AppRequest {
+  string payload_type = 1;
+  bytes payload = 2;   // serialized request
+}
+
+message AppResponse {
+  string payload_type = 1;
+  bytes payload = 2;   // serialized request
+}
+
+message SecureReqMsgWrapper {
+  oneof body {
+    SRPFirstStep first_step = 1;
+    SRPThirdStep third_step = 2;
+    AppRequest app_req = 3;
+  }
+}
+
+message SecureRespMsgWrapper {
+  oneof body {
+    SRPSecondStep second_step = 1;
+    SRPThirdStepAck third_step_ack = 2;
+    AppResponse app_resp = 3;
+  }
+}

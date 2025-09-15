@@ -90,3 +90,19 @@ async def test_add_and_get_server(db_manager: DBManager):
 
     result = await db_manager.get_server(_container_id)
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_auth_client(db_manager: DBManager):
+    username = "user"
+    verifier = b"1234"
+    salt = b"4321"
+    await db_manager.add_auth_client(username, verifier, salt)
+    assert verifier == await db_manager.get_auth_client_verifier(username)
+    assert salt == await db_manager.get_auth_client_salt(username)
+    await db_manager.remove_auth_client(username)
+    try:
+        await db_manager.get_auth_client_verifier(username)
+        assert False
+    except Exception:
+        pass
