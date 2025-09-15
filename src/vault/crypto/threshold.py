@@ -48,7 +48,7 @@ def encrypt(message: str, encryption_key: types.Key) -> Secret:
     encrypted_message = tc.encrypt_message(
         message, PublicKey(EccPoint(int(encryption_key.x), int(encryption_key.y)))
     )
-    return Secret(  # TODO: create Pydantic model if needed
+    return Secret(
         c1=pb2.Key(x=str(encrypted_message.C1.x), y=str(encrypted_message.C1.y)),
         c2=pb2.Key(x=str(encrypted_message.C2.x), y=str(encrypted_message.C2.y)),
         ciphertext=encrypted_message.ciphertext,

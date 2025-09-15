@@ -1,4 +1,3 @@
-import random
 from unittest.mock import patch
 
 import grpc
@@ -22,18 +21,13 @@ from vault.share_server.share_server import ShareServer
 
 
 @pytest.fixture
-def user_id() -> str:
-    return "user_1"
-
-
-@pytest.fixture
 def share():
     return types.Key(x="123", y="456").model_dump_json().encode()
 
 
 @pytest_asyncio.fixture
 async def server():
-    return ShareServer(random.randint(40000, 60000))
+    return ShareServer(0)
 
 
 @pytest.fixture

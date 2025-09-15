@@ -6,17 +6,16 @@ from vault.common import types
 from vault.manager.db_manager import DBManager
 
 
-@pytest_asyncio.fixture(scope="module")
-async def db_manager():
-    with PostgresContainer("postgres:16") as container:
-        db_url = container.get_connection_url().replace(
-            "postgresql+psycopg2://", "postgresql+asyncpg://", 1
-        )
-        print(f"Using database URL: {db_url}")
-        db = DBManager(db_url)
-        await db.start()
-        yield db
-        await db.close()
+@pytest_asyncio.fixture
+async def db_manager(db: PostgresContainer):
+    db_url = db.get_connection_url().replace(
+        "postgresql+psycopg2://", "postgresql+asyncpg://", 1
+    )
+    print(f"Using database URL: {db_url}")
+    db = DBManager(db_url)
+    await db.start()
+    yield db
+    await db.close()
 
 
 @pytest.mark.asyncio
@@ -26,9 +25,7 @@ async def test_add_and_get_secret(db_manager: DBManager):
     secret = b"supersecret"
     await db_manager.add_secret(user_id, secret_id, secret)
     result = await db_manager.get_secret(user_id, secret_id)
-    assert result.user_id == user_id
-    assert result.secret_id == secret_id
-    assert result.secret == secret
+    assert result == secret
 
 
 @pytest.mark.asyncio
@@ -37,8 +34,7 @@ async def test_add_user_and_get_pubkey(db_manager: DBManager):
     pubkey = b"publickeydata"
     await db_manager.add_user(user_id, pubkey)
     result = await db_manager.get_user_public_key(user_id)
-    assert result.user_id == user_id
-    assert result.public_key == pubkey
+    assert result == pubkey
 
 
 @pytest.mark.asyncio

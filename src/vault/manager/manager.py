@@ -8,6 +8,7 @@ from vault.common.generated.vault_pb2 import (
     PartialDecrypted,
     RegisterResponse,
     RetrieveSecretResponse,
+    Secret,
     StoreSecretResponse,
 )
 from vault.common.generated.vault_pb2_grpc import (
@@ -39,7 +40,7 @@ class Manager(ManagerServicer):
         self._port = port
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
 
         # DB
         self._db = DBManager(
@@ -69,17 +70,22 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_not_exists(request.user_id, context):
             return RegisterResponse()
 
+        # Add user to DB
+        await self._db.add_user(request.user_id, request.user_public_key)
+
+        # Get public keys of share servers
         public_keys = await self._db.get_servers_keys()
         if not self._validate_num_of_servers_in_db(len(public_keys), context):
             return RegisterResponse()
 
+        # Add user's public key to the end of the list, where the bootstrap expects it
         public_keys.append(request.user_public_key)
-        # Bootstrap keeps the list order, and assumes the last key is the user's key
 
-        # Sending generate shares request to bootstrap
         ########################
         # TODO: Deploy bootstrap
         ########################
+
+        # Sending generate shares request to bootstrap
         bootstrap_address = "bootstrap.example.com:50051"
         async with grpc.aio.insecure_channel(bootstrap_address) as channel:
             stub = BootstrapStub(channel)
@@ -119,7 +125,9 @@ class Manager(ManagerServicer):
             return StoreSecretResponse(success=False)
 
         # TODO: make sure .proto Secret is saved correctly in the DB
-        await self._db.add_secret(request.user_id, request.secret_id, request.secret)
+        await self._db.add_secret(
+            request.user_id, request.secret_id, request.secret.SerializeToString()
+        )
         return StoreSecretResponse(success=True)
 
     async def RetrieveSecret(self, request, context):
@@ -136,12 +144,14 @@ class Manager(ManagerServicer):
         ) or not await self._validate_user_exists(request.user_id, context):
             return StoreSecretResponse()
 
-        # TODO: make sure the returned secret object is the .proto Secret
-        secret = await self._db.get_secret(request.user_id, request.secret_id)
-        if not secret:
+        # Get secret from DB
+        bytes_secret = await self._db.get_secret(request.user_id, request.secret_id)
+        if not bytes_secret:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Secret not found")
             return StoreSecretResponse()
+        secret = Secret()
+        secret.ParseFromString(bytes_secret)
 
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
@@ -150,8 +160,10 @@ class Manager(ManagerServicer):
             async with grpc.aio.insecure_channel(server_adress) as channel:
                 stub = ShareServerStub(channel)
                 response = await stub.Decrypt(user_id=request.user_id, secret=secret)
-                partial_decryptions.append(response.DecryptResponse)
-        return RetrieveSecretResponse(partial_decryptions=partial_decryptions)
+                partial_decryptions.append(response.partial_decrypted_secret)
+        return RetrieveSecretResponse(
+            partial_decryptions=partial_decryptions, secret=secret
+        )
 
     def _validate_server_ready(self, context):
         if not self._ready:

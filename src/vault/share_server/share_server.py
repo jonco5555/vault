@@ -27,7 +27,7 @@ class ShareServer(ShareServerServicer):
         self._port = port
         self._server = grpc.aio.server()
         add_ShareServerServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
 
         self._privkey_b64, self._pubkey_b64 = generate_key_pair()
         self._encrypted_shares: dict[bytes] = {}

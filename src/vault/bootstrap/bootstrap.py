@@ -22,7 +22,7 @@ class Bootstrap(BootstrapServicer):
         self._port = port
         self._server = grpc.aio.server()
         add_BootstrapServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
 
     async def start(self):
         await self._server.start()
