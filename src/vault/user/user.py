@@ -31,8 +31,9 @@ class User:
         self._secrets_ids = set()
 
     async def register(self):
-        async with grpc.aio.insecure_channel(
-            f"{self._server_ip}:{self._server_port}"
+        creds = grpc.ssl_channel_credentials(root_certificates=None)
+        async with grpc.aio.secure_channel(
+            f"{self._server_ip}:{self._server_port}", creds
         ) as channel:
             stub = ManagerStub(channel)
             response = await stub.Register(

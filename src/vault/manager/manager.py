@@ -17,6 +17,7 @@ from vault.common.generated.vault_pb2_grpc import (
     ShareServerStub,
     add_ManagerServicer_to_server,
 )
+from vault.crypto.ec_crypto import generate_cert_and_keys
 from vault.manager.db_manager import DBManager
 
 logging.basicConfig(
@@ -38,9 +39,17 @@ class Manager(ManagerServicer):
         self._logger = logging.getLogger(__class__.__name__)
         # grpc server
         self._port = port
+        self._cert, self._pub_key, self._priv_key = generate_cert_and_keys(
+            common_name="manager",
+            organization_name="Vault Inc.",
+            country_name="US",
+            valid_days=365,
+            output_dir="./certs/manager",
+        )
+        creds = grpc.ssl_server_credentials([(self._priv_key, self._cert)])
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
-        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_secure_port(f"[::]:{self._port}", creds)
 
         # DB
         self._db = DBManager(
