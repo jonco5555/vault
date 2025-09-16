@@ -11,8 +11,8 @@ service AuthService {
 
 message AuthRegisterRequest {
   string username = 1;
-  bytes verifier = 2;
-  bytes salt = 3;
+  string verifier = 2;
+  string salt = 3;
 }
 
 message AuthRegisterResponse {
@@ -26,13 +26,13 @@ message SRPFirstStep {
 }
 
 message SRPSecondStep {
-  bytes server_public_key = 1;
-  bytes salt = 2;
+  string server_public_key = 1;
+  string salt = 2;
 }
 
 message SRPThirdStep {
-  bytes client_public_key = 1;
-  bytes client_session_key_proof = 2;
+  string client_public_key = 1;
+  string client_session_key_proof = 2;
 }
 
 message SRPThirdStepAck {
