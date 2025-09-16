@@ -1,4 +1,3 @@
-from typing import Tuple
 import logging
 from typing import Optional
 
@@ -41,8 +40,8 @@ class Server(Base):
 class AuthClient(Base):
     __tablename__ = "auth_clients"
     username: Mapped[str] = mapped_column(primary_key=True)
-    verifier: Mapped[bytes] = mapped_column()
-    salt: Mapped[bytes] = mapped_column()
+    verifier: Mapped[str] = mapped_column()
+    salt: Mapped[str] = mapped_column()
 
 
 class DBManager:
@@ -161,7 +160,7 @@ class DBManager:
             servers = result.scalars().all()
             return [server.ip_address for server in servers]
 
-    async def add_auth_client(self, username: str, verifier: bytes, salt: bytes):
+    async def add_auth_client(self, username: str, verifier: str, salt: str):
         self._logger.info(f"Adding AuthClient with {username=}")
         async with self._session() as session:
             entry = AuthClient(
@@ -172,7 +171,7 @@ class DBManager:
             session.add(entry)
             await session.commit()
 
-    async def get_auth_client_verifier(self, username: str) -> Tuple[bytes, bytes]:
+    async def get_auth_client_verifier(self, username: str) -> str:
         self._logger.info(f"Retrieving AuthClient auth_record for {username=}")
         async with self._session() as session:
             result = await session.get(AuthClient, username)
@@ -180,7 +179,7 @@ class DBManager:
                 raise RuntimeError(f"AuthClient with {username=} doesnt exist")
             return result.verifier
 
-    async def get_auth_client_salt(self, username: str) -> Tuple[bytes, bytes]:
+    async def get_auth_client_salt(self, username: str) -> str:
         self._logger.info(f"Retrieving AuthClient auth_record for {username=}")
         async with self._session() as session:
             result = await session.get(AuthClient, username)
