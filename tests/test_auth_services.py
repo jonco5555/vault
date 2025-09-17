@@ -21,7 +21,7 @@ async def db_manager(db: PostgresContainer):
 
 
 @pytest.mark.asyncio
-async def test_basic_flow(db_manager):
+async def test_grpc_flow(db_manager):
     print("stating auth service...")
     auth_service = AuthService(
         db=db_manager,
@@ -37,16 +37,35 @@ async def test_basic_flow(db_manager):
     )
 
     USERNAME = "alice"
-    PASSWORD = "secret-password"
+    PASSWORD = "password"
+    BAD_PASSWORD = "bad_password"
+
     print("registring client...")
-    await auth_client.register(USERNAME, PASSWORD)
+    await auth_client.register(
+        username=USERNAME,
+        password=PASSWORD,
+    )
     print("client registered")
 
     print("do_secure_call...")
     res: bytes = await auth_client.do_secure_call(
-        USERNAME, PASSWORD, "echo", b"hello from client"
+        username=USERNAME,
+        password=PASSWORD,
+        payload_type="echo",
+        payload=b"hello from client",
     )
-    # assert b"hello from client" == res
     print("server responded:", res)
+
+    print("BAD do_secure_call...")
+    try:
+        res: bytes = await auth_client.do_secure_call(
+            username=USERNAME,
+            password=BAD_PASSWORD,
+            payload_type="echo",
+            payload=b"hello from bad client",
+        )
+        assert False
+    except Exception:
+        pass
 
     auth_service_task.cancel()
