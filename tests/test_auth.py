@@ -1,5 +1,11 @@
 import pytest
-from srptools import SRPContext, SRPClientSession, SRPServerSession
+
+from vault.crypto.authentication import (
+    srp_registration_client_generate_data,
+    srp_authentication_server_step_one,
+    srp_authentication_client_step_two,
+    srp_authentication_server_step_three,
+)
 
 
 @pytest.mark.asyncio
@@ -9,8 +15,10 @@ async def test_happy_flow():
     USERNAME = "alice"
     PASSWORD = "password123"
     # 2) user generates data
-    context = SRPContext(USERNAME, PASSWORD)
-    username, password_verifier, salt = context.get_user_data_triplet()
+    username, password_verifier, salt = srp_registration_client_generate_data(
+        username=USERNAME,
+        password=PASSWORD,
+    )
     print(f"{username=}, {password_verifier=}, {salt=}")
     # 3) user sends username, password_verifier, salt to the server
     # 4) server confirms and stores in db
@@ -20,23 +28,30 @@ async def test_happy_flow():
 
     # pre-2) server retrieves from db the `password_verifier` and `salt`
     # 2) server generate server public.
-    server_session = SRPServerSession(SRPContext(username), password_verifier)
-    server_public = server_session.public
+    server_public, server_private = srp_authentication_server_step_one(
+        username=username,
+        password_verifier=password_verifier,
+    )
     # 3) <== server sends to user a public and salt
 
     # 4) user receive server public and salt and process them.
-    client_session = SRPClientSession(SRPContext(username, "password123"))
-    client_session.process(server_public, salt)
-    # 5) user Generate client public and session key.
-    client_public = client_session.public
-    client_session_key = client_session.key
-    client_session_key_proof = client_session.key_proof
+    client_public, client_session_key, client_session_key_proof = (
+        srp_authentication_client_step_two(
+            username=USERNAME,
+            password=PASSWORD,
+            server_public_key=server_public,
+            salt=salt,
+        )
+    )
 
-    # 6) ==> user send `client_public` and `client_session_key_proof` to server
-    # 7) server Process client public key generates a session key
-    server_session.process(client_public, salt)
-    assert server_session.verify_proof(client_session_key_proof)
-    server_session_key = server_session.key
+    server_session_key = srp_authentication_server_step_three(
+        username=USERNAME,
+        password_verifier=password_verifier,
+        salt=salt,
+        server_private=server_private,
+        client_public=client_public,
+        client_session_key_proof=client_session_key_proof,
+    )
 
     # now we have an agreed session key based on a password.
     assert server_session_key == client_session_key
@@ -48,9 +63,12 @@ async def test_unhappy_flow():
     # 1) user picks cradentials
     USERNAME = "alice"
     PASSWORD = "password123"
+    BAD_PASSWORD = "BAD_PASSWORD"
     # 2) user generates data
-    context = SRPContext(USERNAME, PASSWORD)
-    username, password_verifier, salt = context.get_user_data_triplet()
+    username, password_verifier, salt = srp_registration_client_generate_data(
+        username=USERNAME,
+        password=PASSWORD,
+    )
     print(f"{username=}, {password_verifier=}, {salt=}")
     # 3) user sends username, password_verifier, salt to the server
     # 4) server confirms and stores in db
@@ -60,23 +78,29 @@ async def test_unhappy_flow():
 
     # pre-2) server retrieves from db the `password_verifier` and `salt`
     # 2) server generate server public.
-    server_session = SRPServerSession(SRPContext(username), password_verifier)
-    server_public = server_session.public
+    server_public, server_private = srp_authentication_server_step_one(
+        username=username,
+        password_verifier=password_verifier,
+    )
     # 3) <== server sends to user a public and salt
 
     # 4) user receive server public and salt and process them.
-    client_session = SRPClientSession(SRPContext(username, "bad_pass"))
-    client_session.process(server_public, salt)
-    # 5) user Generate client public and session key.
-    client_public = client_session.public
-    client_session_key = client_session.key
-    client_session_key_proof = client_session.key_proof
+    client_public, _, client_session_key_proof = srp_authentication_client_step_two(
+        username=USERNAME,
+        password=BAD_PASSWORD,
+        server_public_key=server_public,
+        salt=salt,
+    )
 
-    # 6) ==> user send `client_public` and `client_session_key_proof` to server
-    # 7) server Process client public key generates a session key
-    server_session.process(client_public, salt)
-    assert not server_session.verify_proof(client_session_key_proof)
-    server_session_key = server_session.key
-
-    # now we have an agreed session key based on a password.
-    assert server_session_key != client_session_key
+    try:
+        srp_authentication_server_step_three(
+            username=USERNAME,
+            password_verifier=password_verifier,
+            salt=salt,
+            server_private=server_private,
+            client_public=client_public,
+            client_session_key_proof=client_session_key_proof,
+        )
+        assert False
+    except Exception:
+        pass

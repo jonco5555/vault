@@ -1,9 +1,11 @@
 import logging
-from srptools import SRPContext, SRPClientSession
 
 import grpc
 from vault.common.generated import auth_pb2, auth_pb2_grpc
-
+from vault.crypto.authentication import (
+    srp_registration_client_generate_data,
+    srp_authentication_client_step_two,
+)
 
 logger = logging.getLogger("auth-client")
 logging.basicConfig(level=logging.INFO)
@@ -22,11 +24,11 @@ class AuthClient:
 
     # --- Client code: registration ---
     async def register(self, username: str, password: str):
-        srp_context = SRPContext(username, password)
-        username, password_verifier, salt = srp_context.get_user_data_triplet()
+        _, password_verifier, salt = srp_registration_client_generate_data(
+            username=username,
+            password=password,
+        )
 
-        print(f"{srp_context.generator=}, {srp_context.prime=}")
-        print(f"{username=}, {password_verifier=}, {salt=}")
         _address = f"{self._auth_server_ip}:{self._auth_server_port}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = auth_pb2_grpc.AuthServiceStub(channel)
@@ -39,7 +41,6 @@ class AuthClient:
             )
             if not resp.ok:
                 raise RuntimeError(f"could not register user {username}")
-            print(f"{resp.ok=}")
 
     # --- Client code: secure call ---
     async def do_secure_call(
@@ -48,11 +49,9 @@ class AuthClient:
         _address = f"{self._auth_server_ip}:{self._auth_server_port}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = auth_pb2_grpc.AuthServiceStub(channel)
-            # metadata = (("username", username),)
             call = stub.SecureCall()
 
             # send client_init
-            print("stage one ==>\n")
             await call.write(
                 auth_pb2.SecureReqMsgWrapper(
                     first_step=auth_pb2.SRPFirstStep(username=username)
@@ -61,26 +60,21 @@ class AuthClient:
 
             # read server_resp
             srv_msg: auth_pb2.SecureRespMsgWrapper = await call.read()
-            print("stage two <==\n")
             if not srv_msg or not srv_msg.HasField("second_step"):
                 raise RuntimeError("expected server_resp")
-            second_step: auth_pb2.SRPSecondStep = srv_msg.second_step
 
-            # produce client_final and session_key
-            # 4) user receive server public and salt and process them.
-            srp_context = SRPContext(username, password)
-            print(f"{srp_context.generator=}, {srp_context.prime=}")
-            client_session = SRPClientSession(srp_context)
-            print(f"{second_step.server_public_key=}, {second_step.salt=}")
-            client_session.process(second_step.server_public_key, second_step.salt)
-            # 5) user Generate client public and session key.
-            client_public = client_session.public
-            # client_session_key = client_session.key
-            client_session_key_proof = client_session.key_proof
+            salt: str = srv_msg.second_step.salt
+            server_public: str = srv_msg.second_step.server_public_key
 
-            print("stage three ==>\n")
-            # send client_final
-            print(f"{client_public=}, {client_session_key_proof=}")
+            client_public, client_session_key, client_session_key_proof = (
+                srp_authentication_client_step_two(
+                    username=username,
+                    password=password,
+                    server_public_key=server_public,
+                    salt=salt,
+                )
+            )
+
             await call.write(
                 auth_pb2.SecureReqMsgWrapper(
                     third_step=auth_pb2.SRPThirdStep(
@@ -89,9 +83,7 @@ class AuthClient:
                     )
                 )
             )
-            print("stage three finish ==>\n")
             srv_msg2: auth_pb2.SecureRespMsgWrapper = await call.read()
-            print("stage three ack <==\n")
             if not srv_msg2 or not srv_msg2.HasField("third_step_ack"):
                 raise RuntimeError("expected third_step_ack")
 
