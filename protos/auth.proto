@@ -1,5 +1,8 @@
 syntax = "proto3";
-package auth;
+
+package vault;
+
+import "vault.proto";
 
 service AuthService {
   // Register username over SRP protocol
@@ -40,21 +43,27 @@ message SRPThirdStepAck {
   string err = 2;
 }
 
-message AppRequest {
-  string payload_type = 1;
-  bytes payload = 2;   // serialized request
+message InnerRequest {
+  oneof body {
+    RegisterRequest register = 1;
+    StoreSecretRequest store = 2;
+    RetrieveSecretRequest retrieve = 3;
+  }
 }
 
-message AppResponse {
-  string payload_type = 1;
-  bytes payload = 2;   // serialized request
+message InnerResponse {
+  oneof body {
+    RegisterResponse register = 1;
+    StoreSecretResponse store = 2;
+    RetrieveSecretResponse retrieve = 3;
+  }
 }
 
 message SecureReqMsgWrapper {
   oneof body {
     SRPFirstStep first_step = 1;
     SRPThirdStep third_step = 2;
-    AppRequest app_req = 3;
+    InnerRequest app_req = 3;
   }
 }
 
@@ -62,6 +71,6 @@ message SecureRespMsgWrapper {
   oneof body {
     SRPSecondStep second_step = 1;
     SRPThirdStepAck third_step_ack = 2;
-    AppResponse app_resp = 3;
+    InnerResponse app_resp = 3;
   }
 }

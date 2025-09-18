@@ -22,35 +22,36 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import vault.common.generated.vault_pb2 as vault__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\x12\x04\x61uth\"G\n\x13\x41uthRegisterRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08verifier\x18\x02 \x01(\t\x12\x0c\n\x04salt\x18\x03 \x01(\t\"/\n\x14\x41uthRegisterResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0b\n\x03\x65rr\x18\x02 \x01(\t\" \n\x0cSRPFirstStep\x12\x10\n\x08username\x18\x01 \x01(\t\"8\n\rSRPSecondStep\x12\x19\n\x11server_public_key\x18\x01 \x01(\t\x12\x0c\n\x04salt\x18\x02 \x01(\t\"K\n\x0cSRPThirdStep\x12\x19\n\x11\x63lient_public_key\x18\x01 \x01(\t\x12 \n\x18\x63lient_session_key_proof\x18\x02 \x01(\t\"*\n\x0fSRPThirdStepAck\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0b\n\x03\x65rr\x18\x02 \x01(\t\"3\n\nAppRequest\x12\x14\n\x0cpayload_type\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"4\n\x0b\x41ppResponse\x12\x14\n\x0cpayload_type\x18\x01 \x01(\t\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"\x96\x01\n\x13SecureReqMsgWrapper\x12(\n\nfirst_step\x18\x01 \x01(\x0b\x32\x12.auth.SRPFirstStepH\x00\x12(\n\nthird_step\x18\x02 \x01(\x0b\x32\x12.auth.SRPThirdStepH\x00\x12#\n\x07\x61pp_req\x18\x03 \x01(\x0b\x32\x10.auth.AppRequestH\x00\x42\x06\n\x04\x62ody\"\xa2\x01\n\x14SecureRespMsgWrapper\x12*\n\x0bsecond_step\x18\x01 \x01(\x0b\x32\x13.auth.SRPSecondStepH\x00\x12/\n\x0ethird_step_ack\x18\x02 \x01(\x0b\x32\x15.auth.SRPThirdStepAckH\x00\x12%\n\x08\x61pp_resp\x18\x03 \x01(\x0b\x32\x11.auth.AppResponseH\x00\x42\x06\n\x04\x62ody2\x9d\x01\n\x0b\x41uthService\x12\x45\n\x0c\x41uthRegister\x12\x19.auth.AuthRegisterRequest\x1a\x1a.auth.AuthRegisterResponse\x12G\n\nSecureCall\x12\x19.auth.SecureReqMsgWrapper\x1a\x1a.auth.SecureRespMsgWrapper(\x01\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\nauth.proto\x12\x05vault\x1a\x0bvault.proto\"G\n\x13\x41uthRegisterRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08verifier\x18\x02 \x01(\t\x12\x0c\n\x04salt\x18\x03 \x01(\t\"/\n\x14\x41uthRegisterResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0b\n\x03\x65rr\x18\x02 \x01(\t\" \n\x0cSRPFirstStep\x12\x10\n\x08username\x18\x01 \x01(\t\"8\n\rSRPSecondStep\x12\x19\n\x11server_public_key\x18\x01 \x01(\t\x12\x0c\n\x04salt\x18\x02 \x01(\t\"K\n\x0cSRPThirdStep\x12\x19\n\x11\x63lient_public_key\x18\x01 \x01(\t\x12 \n\x18\x63lient_session_key_proof\x18\x02 \x01(\t\"*\n\x0fSRPThirdStepAck\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0b\n\x03\x65rr\x18\x02 \x01(\t\"\xa0\x01\n\x0cInnerRequest\x12*\n\x08register\x18\x01 \x01(\x0b\x32\x16.vault.RegisterRequestH\x00\x12*\n\x05store\x18\x02 \x01(\x0b\x32\x19.vault.StoreSecretRequestH\x00\x12\x30\n\x08retrieve\x18\x03 \x01(\x0b\x32\x1c.vault.RetrieveSecretRequestH\x00\x42\x06\n\x04\x62ody\"\xa4\x01\n\rInnerResponse\x12+\n\x08register\x18\x01 \x01(\x0b\x32\x17.vault.RegisterResponseH\x00\x12+\n\x05store\x18\x02 \x01(\x0b\x32\x1a.vault.StoreSecretResponseH\x00\x12\x31\n\x08retrieve\x18\x03 \x01(\x0b\x32\x1d.vault.RetrieveSecretResponseH\x00\x42\x06\n\x04\x62ody\"\x9b\x01\n\x13SecureReqMsgWrapper\x12)\n\nfirst_step\x18\x01 \x01(\x0b\x32\x13.vault.SRPFirstStepH\x00\x12)\n\nthird_step\x18\x02 \x01(\x0b\x32\x13.vault.SRPThirdStepH\x00\x12&\n\x07\x61pp_req\x18\x03 \x01(\x0b\x32\x13.vault.InnerRequestH\x00\x42\x06\n\x04\x62ody\"\xa7\x01\n\x14SecureRespMsgWrapper\x12+\n\x0bsecond_step\x18\x01 \x01(\x0b\x32\x14.vault.SRPSecondStepH\x00\x12\x30\n\x0ethird_step_ack\x18\x02 \x01(\x0b\x32\x16.vault.SRPThirdStepAckH\x00\x12(\n\x08\x61pp_resp\x18\x03 \x01(\x0b\x32\x14.vault.InnerResponseH\x00\x42\x06\n\x04\x62ody2\xa1\x01\n\x0b\x41uthService\x12G\n\x0c\x41uthRegister\x12\x1a.vault.AuthRegisterRequest\x1a\x1b.vault.AuthRegisterResponse\x12I\n\nSecureCall\x12\x1a.vault.SecureReqMsgWrapper\x1a\x1b.vault.SecureRespMsgWrapper(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'auth_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_AUTHREGISTERREQUEST']._serialized_start=20
-  _globals['_AUTHREGISTERREQUEST']._serialized_end=91
-  _globals['_AUTHREGISTERRESPONSE']._serialized_start=93
-  _globals['_AUTHREGISTERRESPONSE']._serialized_end=140
-  _globals['_SRPFIRSTSTEP']._serialized_start=142
-  _globals['_SRPFIRSTSTEP']._serialized_end=174
-  _globals['_SRPSECONDSTEP']._serialized_start=176
-  _globals['_SRPSECONDSTEP']._serialized_end=232
-  _globals['_SRPTHIRDSTEP']._serialized_start=234
-  _globals['_SRPTHIRDSTEP']._serialized_end=309
-  _globals['_SRPTHIRDSTEPACK']._serialized_start=311
-  _globals['_SRPTHIRDSTEPACK']._serialized_end=353
-  _globals['_APPREQUEST']._serialized_start=355
-  _globals['_APPREQUEST']._serialized_end=406
-  _globals['_APPRESPONSE']._serialized_start=408
-  _globals['_APPRESPONSE']._serialized_end=460
-  _globals['_SECUREREQMSGWRAPPER']._serialized_start=463
-  _globals['_SECUREREQMSGWRAPPER']._serialized_end=613
-  _globals['_SECURERESPMSGWRAPPER']._serialized_start=616
-  _globals['_SECURERESPMSGWRAPPER']._serialized_end=778
-  _globals['_AUTHSERVICE']._serialized_start=781
-  _globals['_AUTHSERVICE']._serialized_end=938
+  _globals['_AUTHREGISTERREQUEST']._serialized_start=34
+  _globals['_AUTHREGISTERREQUEST']._serialized_end=105
+  _globals['_AUTHREGISTERRESPONSE']._serialized_start=107
+  _globals['_AUTHREGISTERRESPONSE']._serialized_end=154
+  _globals['_SRPFIRSTSTEP']._serialized_start=156
+  _globals['_SRPFIRSTSTEP']._serialized_end=188
+  _globals['_SRPSECONDSTEP']._serialized_start=190
+  _globals['_SRPSECONDSTEP']._serialized_end=246
+  _globals['_SRPTHIRDSTEP']._serialized_start=248
+  _globals['_SRPTHIRDSTEP']._serialized_end=323
+  _globals['_SRPTHIRDSTEPACK']._serialized_start=325
+  _globals['_SRPTHIRDSTEPACK']._serialized_end=367
+  _globals['_INNERREQUEST']._serialized_start=370
+  _globals['_INNERREQUEST']._serialized_end=530
+  _globals['_INNERRESPONSE']._serialized_start=533
+  _globals['_INNERRESPONSE']._serialized_end=697
+  _globals['_SECUREREQMSGWRAPPER']._serialized_start=700
+  _globals['_SECUREREQMSGWRAPPER']._serialized_end=855
+  _globals['_SECURERESPMSGWRAPPER']._serialized_start=858
+  _globals['_SECURERESPMSGWRAPPER']._serialized_end=1025
+  _globals['_AUTHSERVICE']._serialized_start=1028
+  _globals['_AUTHSERVICE']._serialized_end=1189
 # @@protoc_insertion_point(module_scope)
