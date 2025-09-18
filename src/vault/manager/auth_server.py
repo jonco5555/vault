@@ -1,9 +1,10 @@
 import logging
 import asyncio
-
 from concurrent import futures
 
 import grpc
+
+from vault.common.generated import vault_pb2_grpc
 from vault.common.generated import auth_pb2, auth_pb2_grpc
 from vault.manager.db_manager import DBManager
 from vault.crypto.authentication import (
@@ -29,10 +30,14 @@ class AuthService(auth_pb2_grpc.AuthServiceServicer):
         db: DBManager,
         server_ip: str,
         server_port: int,
+        manager_server_ip: str,
+        manager_server_port: int,
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._server_ip = server_ip
         self._server_port = server_port
+        self._manager_server_ip = manager_server_ip
+        self._manager_server_port = manager_server_port
 
         self._server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
         auth_pb2_grpc.add_AuthServiceServicer_to_server(self, self._server)
@@ -124,9 +129,9 @@ class AuthService(auth_pb2_grpc.AuthServiceServicer):
             await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected app_req")
             return
 
-        app_req: auth_pb2.AppRequest = msg3.app_req
-        app_resp: auth_pb2.AppResponse = auth_pb2.AppResponse(
-            payload_type=app_req.payload_type, payload=app_req.payload
+        app_req: auth_pb2.InnerRequest = msg3.app_req
+        app_resp: auth_pb2.InnerResponse = await self._handle_user_inner_request(
+            app_req
         )
 
         # process request (dummy echo)
@@ -146,3 +151,26 @@ class AuthService(auth_pb2_grpc.AuthServiceServicer):
         except asyncio.CancelledError:
             logger.info("Stoppig Authservice...")
             await self._server.stop(grace=10)  # grace period of 10 seconds
+
+    async def _handle_user_inner_request(
+        self, inner_request: auth_pb2.InnerRequest
+    ) -> auth_pb2.InnerResponse:
+        async with grpc.aio.insecure_channel(
+            f"{self._manager_server_ip}:{self._manager_server_port}"
+        ) as channel:
+            stub = vault_pb2_grpc.ManagerStub(channel)
+
+            if inner_request.HasField("register"):
+                return auth_pb2.InnerResponse(
+                    register=await stub.Register(inner_request.register)
+                )
+            elif inner_request.HasField("store"):
+                return auth_pb2.InnerResponse(
+                    store=await stub.StoreSecret(inner_request.store)
+                )
+            elif inner_request.HasField("retrieve"):
+                return auth_pb2.InnerResponse(
+                    retrieve=await stub.RetrieveSecret(inner_request.retrieve)
+                )
+            else:
+                raise RuntimeError("unknown InnerRequest body type")

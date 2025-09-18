@@ -34,13 +34,15 @@ class Manager(ManagerServicer):
         db_password: str,
         db_name: str,
         num_of_share_servers: int,
+        ip: str = "[::]",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         # grpc server
         self._port = port
+        self._ip = ip
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
-        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_insecure_port(f"{self._ip}:{self._port}")
 
         # DB
         self._db = DBManager(

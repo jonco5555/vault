@@ -1,7 +1,10 @@
+from typing import Union
 import logging
 
 import grpc
 from vault.common.generated import auth_pb2, auth_pb2_grpc
+from vault.common.generated import vault_pb2
+
 from vault.crypto.authentication import (
     srp_registration_client_generate_data,
     srp_authentication_client_step_two,
@@ -9,8 +12,6 @@ from vault.crypto.authentication import (
 
 logger = logging.getLogger("auth-client")
 logging.basicConfig(level=logging.INFO)
-
-SERVER = "localhost:50051"
 
 
 class AuthClient:
@@ -44,7 +45,14 @@ class AuthClient:
 
     # --- Client code: secure call ---
     async def do_secure_call(
-        self, username: str, password: str, payload_type: str, payload: bytes
+        self,
+        username: str,
+        password: str,
+        request_probuf: Union[
+            vault_pb2.RegisterRequest,
+            vault_pb2.StoreSecretRequest,
+            vault_pb2.RetrieveSecretRequest,
+        ],
     ) -> bytes:
         _address = f"{self._auth_server_ip}:{self._auth_server_port}"
         async with grpc.aio.insecure_channel(_address) as channel:
@@ -91,14 +99,48 @@ class AuthClient:
                 raise RuntimeError("expected ok")
 
             # send application request
-            app_req = auth_pb2.AppRequest(payload_type=payload_type, payload=payload)
+            app_req = self._create_inner_request_from_user_request(request_probuf)
             await call.write(auth_pb2.SecureReqMsgWrapper(app_req=app_req))
 
             # read app response
             resp_msg = await call.read()
+            await call.done_writing()
+
             if not resp_msg or not resp_msg.HasField("app_resp"):
                 raise RuntimeError("expected app_resp")
-            app_res: auth_pb2.AppResponse = resp_msg.app_resp
-            ct_resp = app_res.payload
-            await call.done_writing()
-            return ct_resp
+            app_res = self._create_user_response_from_inner_response(resp_msg.app_resp)
+            return app_res
+
+    def _create_inner_request_from_user_request(
+        self,
+        request_probuf: Union[
+            vault_pb2.RegisterRequest,
+            vault_pb2.StoreSecretRequest,
+            vault_pb2.RetrieveSecretRequest,
+        ],
+    ) -> auth_pb2.InnerRequest:
+        if type(request_probuf) is vault_pb2.RegisterRequest:
+            return auth_pb2.InnerRequest(register=request_probuf)
+        elif type(request_probuf) is vault_pb2.StoreSecretRequest:
+            return auth_pb2.InnerRequest(store=request_probuf)
+        elif type(request_probuf) is vault_pb2.RetrieveSecretRequest:
+            return auth_pb2.InnerRequest(retrieve=request_probuf)
+        else:
+            raise RuntimeError(f"unknown request_probuf type: {type(request_probuf)}")
+
+    def _create_user_response_from_inner_response(
+        self,
+        inner_response: auth_pb2.InnerRequest,
+    ) -> Union[
+        vault_pb2.RegisterRequest,
+        vault_pb2.StoreSecretRequest,
+        vault_pb2.RetrieveSecretRequest,
+    ]:
+        if inner_response.HasField("register"):
+            return inner_response.register
+        elif inner_response.HasField("store"):
+            return inner_response.store
+        elif inner_response.HasField("retrieve"):
+            return inner_response.retrieve
+        else:
+            raise RuntimeError("unknown InnerRequest body type")

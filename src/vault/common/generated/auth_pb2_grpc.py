@@ -35,12 +35,12 @@ class AuthServiceStub(object):
             channel: A grpc.Channel.
         """
         self.AuthRegister = channel.unary_unary(
-                '/auth.AuthService/AuthRegister',
+                '/vault.AuthService/AuthRegister',
                 request_serializer=auth__pb2.AuthRegisterRequest.SerializeToString,
                 response_deserializer=auth__pb2.AuthRegisterResponse.FromString,
                 _registered_method=True)
         self.SecureCall = channel.stream_stream(
-                '/auth.AuthService/SecureCall',
+                '/vault.AuthService/SecureCall',
                 request_serializer=auth__pb2.SecureReqMsgWrapper.SerializeToString,
                 response_deserializer=auth__pb2.SecureRespMsgWrapper.FromString,
                 _registered_method=True)
@@ -78,9 +78,9 @@ def add_AuthServiceServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'auth.AuthService', rpc_method_handlers)
+            'vault.AuthService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('auth.AuthService', rpc_method_handlers)
+    server.add_registered_method_handlers('vault.AuthService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
@@ -101,7 +101,7 @@ class AuthService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/auth.AuthService/AuthRegister',
+            '/vault.AuthService/AuthRegister',
             auth__pb2.AuthRegisterRequest.SerializeToString,
             auth__pb2.AuthRegisterResponse.FromString,
             options,
@@ -128,7 +128,7 @@ class AuthService(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/auth.AuthService/SecureCall',
+            '/vault.AuthService/SecureCall',
             auth__pb2.SecureReqMsgWrapper.SerializeToString,
             auth__pb2.SecureRespMsgWrapper.FromString,
             options,
