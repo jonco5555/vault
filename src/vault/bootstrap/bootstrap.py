@@ -8,6 +8,7 @@ from vault.common.generated.vault_pb2_grpc import (
     add_BootstrapServicer_to_server,
 )
 from vault.crypto.asymmetric import encrypt
+from vault.crypto.ssl import generate_cert_and_keys
 from vault.crypto.threshold import generate_key_and_shares
 
 logging.basicConfig(
@@ -18,11 +19,16 @@ logging.basicConfig(
 class Bootstrap(BootstrapServicer):
     def __init__(self, port: int):
         self._logger = logging.getLogger(__class__.__name__)
-        # grpc server
         self._port = port
+        self._cert, self._ssl_pubkey, self._ssl_privkey = generate_cert_and_keys(
+            common_name="bootstrap"
+        )
+
+        # grpc server
+        creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
         self._server = grpc.aio.server()
         add_BootstrapServicer_to_server(self, self._server)
-        self._port = self._server.add_insecure_port(f"[::]:{self._port}")
+        self._port = self._server.add_secure_port(f"[::]:{self._port}", creds)
 
     async def start(self):
         await self._server.start()

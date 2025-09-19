@@ -99,7 +99,10 @@ async def test_generate_shares_raises_exception_invalid_key(
 async def bootstrap_stub():
     bootstrap = Bootstrap(0)
     await bootstrap.start()
-    async with grpc.aio.insecure_channel(f"localhost:{bootstrap._port}") as channel:
+    creds = grpc.ssl_channel_credentials(root_certificates=bootstrap._cert)
+    async with grpc.aio.secure_channel(
+        f"localhost:{bootstrap._port}", creds
+    ) as channel:
         stub = BootstrapStub(channel)
         yield stub
 

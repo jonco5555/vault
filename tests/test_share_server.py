@@ -27,7 +27,7 @@ def share():
 
 @pytest_asyncio.fixture
 async def server():
-    return ShareServer(0)
+    return ShareServer(0, id=1)
 
 
 @pytest.fixture
@@ -41,9 +41,10 @@ def share_server(server) -> _Server:
 
 
 @pytest_asyncio.fixture
-async def share_server_stub(server):
+async def share_server_stub(server: ShareServer):
     await server.start()
-    async with grpc.aio.insecure_channel(f"localhost:{server._port}") as channel:
+    creds = grpc.ssl_channel_credentials(root_certificates=server._cert)
+    async with grpc.aio.secure_channel(f"localhost:{server._port}", creds) as channel:
         stub = ShareServerStub(channel)
         yield stub
 

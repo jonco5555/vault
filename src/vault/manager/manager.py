@@ -17,7 +17,7 @@ from vault.common.generated.vault_pb2_grpc import (
     ShareServerStub,
     add_ManagerServicer_to_server,
 )
-from vault.crypto.ec_crypto import generate_cert_and_keys
+from vault.crypto.ssl import generate_cert_and_keys
 from vault.manager.db_manager import DBManager
 
 logging.basicConfig(
@@ -37,16 +37,13 @@ class Manager(ManagerServicer):
         num_of_share_servers: int,
     ):
         self._logger = logging.getLogger(__class__.__name__)
-        # grpc server
         self._port = port
-        self._cert, self._pub_key, self._priv_key = generate_cert_and_keys(
-            common_name="manager",
-            organization_name="Vault Inc.",
-            country_name="US",
-            valid_days=365,
-            output_dir="./certs/manager",
+        self._cert, self._ssl_pubkey, self._ssl_privkey = generate_cert_and_keys(
+            common_name="manager"
         )
-        creds = grpc.ssl_server_credentials([(self._priv_key, self._cert)])
+
+        # grpc server
+        creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
         self._port = self._server.add_secure_port(f"[::]:{self._port}", creds)
@@ -93,10 +90,11 @@ class Manager(ManagerServicer):
         ########################
         # TODO: Deploy bootstrap
         ########################
+        bootstrap_address = "bootstrap.example.com:50051"
 
         # Sending generate shares request to bootstrap
-        bootstrap_address = "bootstrap.example.com:50051"
-        async with grpc.aio.insecure_channel(bootstrap_address) as channel:
+        creds = grpc.ssl_channel_credentials(root_certificates=None)
+        async with grpc.aio.secure_channel(bootstrap_address, creds) as channel:
             stub = BootstrapStub(channel)
             response: GenerateSharesResponse = await stub.GenerateShares(
                 GenerateSharesRequest(
@@ -114,8 +112,8 @@ class Manager(ManagerServicer):
 
         # Send shares to share servers
         servers_addresses = await self._db.get_servers_addresses()
-        for share, server_adress in zip(response.encrypted_shares, servers_addresses):
-            async with grpc.aio.insecure_channel(server_adress) as channel:
+        for share, server_address in zip(response.encrypted_shares, servers_addresses):
+            async with grpc.aio.secure_channel(server_address, creds) as channel:
                 stub = ShareServerStub(channel)
                 await stub.StoreShare(encrypted_share=share, user_id=request.user_id)
 
@@ -165,8 +163,9 @@ class Manager(ManagerServicer):
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
-        for server_adress in servers_addresses:
-            async with grpc.aio.insecure_channel(server_adress) as channel:
+        creds = grpc.ssl_channel_credentials(root_certificates=None)
+        for server_address in servers_addresses:
+            async with grpc.aio.secure_channel(server_address, creds) as channel:
                 stub = ShareServerStub(channel)
                 response = await stub.Decrypt(user_id=request.user_id, secret=secret)
                 partial_decryptions.append(response.partial_decrypted_secret)
