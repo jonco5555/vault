@@ -115,6 +115,7 @@ class Manager(ManagerServicer):
 
         # Send shares to share servers
         servers_addresses = await self._db.get_servers_addresses()
+        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         for share, server_address in zip(response.encrypted_shares, servers_addresses):
             async with grpc.aio.secure_channel(server_address, creds) as channel:
                 stub = ShareServerStub(channel)

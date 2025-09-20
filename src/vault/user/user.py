@@ -29,14 +29,14 @@ class User:
         self._num_of_share_servers = num_of_share_servers
         self._privkey_b64, self._pubkey_b64 = generate_key_pair()
         self._ca_cert = load_ca_cert(ca_cert_path)
+        self._creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         self.encrypted_share = None
         self._encryption_key = None
         self._secrets_ids = set()
 
     async def register(self):
-        creds = grpc.ssl_channel_credentials(root_certificates=None)
         async with grpc.aio.secure_channel(
-            f"{self._server_ip}:{self._server_port}", creds
+            f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
             response = await stub.Register(
@@ -57,8 +57,8 @@ class User:
     async def store_secret(self, secret: str, secret_id: str) -> bool:
         self._secrets_ids.add(secret_id)
         encrypted_secret = encrypt(secret, self._encryption_key)
-        async with grpc.aio.insecure_channel(
-            f"{self._server_ip}:{self._server_port}"
+        async with grpc.aio.secure_channel(
+            f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
             response = await stub.StoreSecret(
@@ -76,8 +76,8 @@ class User:
             print(f"Secret ID {secret_id} not found for user {self._user_id}")
             return None
 
-        async with grpc.aio.insecure_channel(
-            f"{self._server_ip}:{self._server_port}"
+        async with grpc.aio.secure_channel(
+            f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
             response = await stub.RetrieveSecret(

@@ -7,7 +7,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 
 def generate_ca_cert_and_key(
-    ca_key: rsa.RSAPrivateKey, key_path: str = "ca.key", cert_path: str = "ca.crt"
+    key_path: str = "ca.key", cert_path: str = "ca.crt"
 ) -> None:
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=4096)
 
@@ -23,8 +23,8 @@ def generate_ca_cert_and_key(
         .issuer_name(ca_name)
         .public_key(ca_key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=3650))
+        .not_valid_before(datetime.now(datetime.timezone.utc))
+        .not_valid_after(datetime.now(datetime.timezone.utc) + timedelta(days=3650))
         .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
         .sign(ca_key, hashes.SHA256())
     )
