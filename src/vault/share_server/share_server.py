@@ -13,7 +13,7 @@ from vault.common.generated.vault_pb2_grpc import (
 )
 from vault.common.types import Key
 from vault.crypto.asymmetric import decrypt, generate_key_pair
-from vault.crypto.ssl import generate_cert_and_keys
+from vault.crypto.certs import generate_component_cert_and_key
 from vault.crypto.threshold import partial_decrypt
 
 logging.basicConfig(
@@ -22,12 +22,20 @@ logging.basicConfig(
 
 
 class ShareServer(ShareServerServicer):
-    def __init__(self, port: int, id: int):
+    def __init__(
+        self,
+        port: int,
+        id: int,
+        ca_cert_path: str = "certs/ca.crt",
+        ca_key_path: str = "certs/ca.key",
+    ):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
         self._id = id
-        self._cert, self._ssl_pubkey, self._ssl_privkey = generate_cert_and_keys(
-            common_name=f"share_server_{id}"
+        self._cert, self._ssl_privkey = generate_component_cert_and_key(
+            name=f"share_server_{id}",
+            ca_cert_path=ca_cert_path,
+            ca_key_path=ca_key_path,
         )
 
         # grpc server

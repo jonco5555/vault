@@ -8,6 +8,7 @@ from vault.common.generated.vault_pb2 import (
 from vault.common.generated.vault_pb2_grpc import ManagerStub
 from vault.common.types import Key
 from vault.crypto.asymmetric import generate_key_pair
+from vault.crypto.certs import load_ca_cert
 from vault.crypto.threshold import decrypt, encrypt, partial_decrypt
 
 
@@ -19,6 +20,7 @@ class User:
         server_port: int,
         threshold: int,
         num_of_share_servers: int,
+        ca_cert_path: str = "certs/ca.crt",
     ):
         self._user_id = user_id
         self._server_ip = server_ip
@@ -26,6 +28,7 @@ class User:
         self._threshold = threshold
         self._num_of_share_servers = num_of_share_servers
         self._privkey_b64, self._pubkey_b64 = generate_key_pair()
+        self._ca_cert = load_ca_cert(ca_cert_path)
         self.encrypted_share = None
         self._encryption_key = None
         self._secrets_ids = set()

@@ -17,7 +17,7 @@ from vault.common.generated.vault_pb2_grpc import (
     ShareServerStub,
     add_ManagerServicer_to_server,
 )
-from vault.crypto.ssl import generate_cert_and_keys
+from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
 from vault.manager.db_manager import DBManager
 
 logging.basicConfig(
@@ -35,12 +35,15 @@ class Manager(ManagerServicer):
         db_password: str,
         db_name: str,
         num_of_share_servers: int,
+        ca_cert_path: str = "certs/ca.crt",
+        ca_key_path: str = "certs/ca.key",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
-        self._cert, self._ssl_pubkey, self._ssl_privkey = generate_cert_and_keys(
-            common_name="manager"
+        self._cert, self._ssl_privkey = generate_component_cert_and_key(
+            name="manager", ca_cert_path=ca_cert_path, ca_key_path=ca_key_path
         )
+        self._ca_cert = load_ca_cert(ca_cert_path)
 
         # grpc server
         creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
@@ -93,7 +96,7 @@ class Manager(ManagerServicer):
         bootstrap_address = "bootstrap.example.com:50051"
 
         # Sending generate shares request to bootstrap
-        creds = grpc.ssl_channel_credentials(root_certificates=None)
+        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         async with grpc.aio.secure_channel(bootstrap_address, creds) as channel:
             stub = BootstrapStub(channel)
             response: GenerateSharesResponse = await stub.GenerateShares(
@@ -163,7 +166,7 @@ class Manager(ManagerServicer):
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
-        creds = grpc.ssl_channel_credentials(root_certificates=None)
+        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         for server_address in servers_addresses:
             async with grpc.aio.secure_channel(server_address, creds) as channel:
                 stub = ShareServerStub(channel)
