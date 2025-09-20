@@ -24,8 +24,13 @@ jobs:
           enable-cache: true
           version: "0.8.11"
 
-      - name: Install the project
-        run: uv sync --locked --all-extras --dev
-
       - name: Run tests
         run: uv run pytest tests
+
+      - name: Build docs
+        if: github.event_name == 'pull_request'
+        run: uv run --group docs mkdocs build
+
+      - name: Upload docs
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: uv run --group docs mkdocs gh-deploy --force

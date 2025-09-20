@@ -36,6 +36,11 @@ dev = [
     "pytest-asyncio>=1.1.0",
     "testcontainers[postgres]>=4.12.0",
 ]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-awesome-pages-plugin>=2.10.1",
+    "mkdocs-material>=9.6.20",
+]
 
 [tool.uv.sources]
 threshold-crypto = { git = "https://github.com/tompetersen/threshold-crypto.git" }
