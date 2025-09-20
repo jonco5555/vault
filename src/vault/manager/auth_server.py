@@ -16,12 +16,6 @@ from vault.crypto.authentication import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("auth-server")
 
-# # --- Utility: derive AEAD key from session key ---
-# TODO: probably ot used - think how to remove this
-# def derive_aead_key(session_key: bytes, info=b"auth-opaque-aead"):
-#     hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=info)
-#     return hkdf.derive(session_key)
-
 
 # --- gRPC service implementation ---
 class AuthService(auth_pb2_grpc.AuthServiceServicer):
@@ -134,11 +128,6 @@ class AuthService(auth_pb2_grpc.AuthServiceServicer):
             app_req
         )
 
-        # process request (dummy echo)
-        logger.info(
-            "Processed payload_type=%s, user=%s", app_req.payload_type, username
-        )
-
         yield auth_pb2.SecureRespMsgWrapper(app_resp=app_resp)
 
     async def start_auth_server(self):
@@ -149,7 +138,7 @@ class AuthService(auth_pb2_grpc.AuthServiceServicer):
             )
             await self._server.wait_for_termination()
         except asyncio.CancelledError:
-            logger.info("Stoppig Authservice...")
+            logger.info("Stopping Authservice...")
             await self._server.stop(grace=10)  # grace period of 10 seconds
 
     async def _handle_user_inner_request(

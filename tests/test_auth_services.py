@@ -48,7 +48,7 @@ async def manager(db: PostgresContainer) -> typing.AsyncGenerator[Manager, None]
 
 @pytest.mark.asyncio
 async def test_grpc_flow(manager, db_manager):
-    print("stating auth service...")
+    print("starting auth service...")
     auth_service = AuthService(
         db=db_manager,
         server_ip=AUTH_IP,
@@ -68,19 +68,19 @@ async def test_grpc_flow(manager, db_manager):
     PASSWORD = "password"
     BAD_PASSWORD = "bad_password"
 
-    print("registring client...")
+    print("registeringclient...")
     await auth_client.register(
         username=USERNAME,
         password=PASSWORD,
     )
     print("client registered")
 
-    print("registring another client...")
+    print("registering another client...")
     await auth_client.register(
         username=USERNAME + "2",
         password=PASSWORD,
     )
-    print("client another registered")
+    print("another client registered")
 
     print("do_secure_call...")
     try:

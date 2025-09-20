@@ -23,7 +23,7 @@ message AuthRegisterResponse {
   string err = 2;
 }
 
-// wrapper for a real meassage
+// wrapper for a real message
 message SRPFirstStep {
   string username = 1;
 }

@@ -11,7 +11,7 @@ from vault.crypto.authentication import (
 @pytest.mark.asyncio
 async def test_happy_flow():
     #### REGISTRATION
-    # 1) user picks cradentials
+    # 1) user picks credentials
     USERNAME = "alice"
     PASSWORD = "password123"
     # 2) user generates data
@@ -60,7 +60,7 @@ async def test_happy_flow():
 @pytest.mark.asyncio
 async def test_unhappy_flow():
     #### REGISTRATION
-    # 1) user picks cradentials
+    # 1) user picks credentials
     USERNAME = "alice"
     PASSWORD = "password123"
     BAD_PASSWORD = "BAD_PASSWORD"
