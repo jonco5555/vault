@@ -34,12 +34,12 @@ class ShareServer(ShareServerServicer):
 
     async def start(self):
         await self._server.start()
-        self._logger.info(f"Bootstrap server started on port {self._port}")
+        self._logger.info(f"Share server started on port {self._port}")
 
     async def close(self):
         if self._server:
             await self._server.stop(grace=5.0)
-        self._logger.info("Bootstrap server stopped")
+        self._logger.info("Share server stopped")
 
     # TODO: Register to manager as server
     async def register():

@@ -1,14 +1,14 @@
 import asyncio
 
-from vault.common.generated import setup_pb2
 from vault.common.setup_unit import SetupUnit
 
 from vault.bootstrap.bootstrap import Bootstrap
 from vault.common.constants import BOOTSTRAP_SERVER_PORT
+from vault.common import types
 
 
 async def main():
-    setup_unit = SetupUnit(setup_pb2.ServiceType.BOOSTRAP_SERVER)
+    setup_unit = SetupUnit(types.ServiceType.BOOSTRAP_SERVER)
 
     print("stating bootstrap...")
     # TODO: run here the bootstrap service!

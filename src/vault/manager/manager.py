@@ -1,5 +1,5 @@
 import logging
-
+from typing import List
 import grpc
 
 from vault.common.generated.vault_pb2 import (
@@ -17,7 +17,15 @@ from vault.common.generated.vault_pb2_grpc import (
     ShareServerStub,
     add_ManagerServicer_to_server,
 )
+
+from vault.common import types
+from vault.common.constants import (
+    BOOTSTRAP_SERVER_PORT,
+    SHARE_SERVER_PORT,
+    SETUP_MASTER_SERVICE_PORT,
+)
 from vault.manager.db_manager import DBManager
+from vault.manager.setup_master import SetupMaster
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -28,13 +36,13 @@ class Manager(ManagerServicer):
     def __init__(
         self,
         port: int,
+        ip: str,
         db_host: str,
         db_port: int,
         db_username: str,
         db_password: str,
         db_name: str,
         num_of_share_servers: int,
-        ip: str = "[::]",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         # grpc server
@@ -48,21 +56,33 @@ class Manager(ManagerServicer):
         self._db = DBManager(
             f"postgresql+asyncpg://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
         )
-
+        self._setup_master_service: SetupMaster = SetupMaster(
+            db=self._db,
+            server_ip="[::]",
+            server_port=SETUP_MASTER_SERVICE_PORT,
+        )
         self._num_of_share_servers = num_of_share_servers
+        self._share_servers_data: List[types.ServiceData] = []
         self._ready = False
 
     async def start(self):
         await self._db.start()
+        await self._setup_master_service.start()
+
+        await self.launch_all_share_servers()
+
         await self._server.start()
         self._ready = True
         self._logger.info(f"Server started on port {self._port}")
 
-    async def close(self):
+    async def stop(self):
         self._ready = False
-        self._db.close()
-        if self._server:
-            await self._server.stop(grace=5.0)
+        await self._server.stop(grace=5.0)
+        await self.terminate_all_share_servers()
+
+        # db must live until _setup_master_service dies
+        await self._setup_master_service.stop()
+        await self._db.close()
         self._logger.info("Server stopped")
 
     async def Register(self, request, context):
@@ -83,12 +103,15 @@ class Manager(ManagerServicer):
         # Add user's public key to the end of the list, where the bootstrap expects it
         public_keys.append(request.user_public_key)
 
-        ########################
-        # TODO: Deploy bootstrap
-        ########################
+        # create bootstrap
+        bootstrap_server_data = (
+            await self._setup_master_service.spawn_bootstrap_server()
+        )
 
         # Sending generate shares request to bootstrap
-        bootstrap_address = "bootstrap.example.com:50051"
+        bootstrap_address = (
+            f"{bootstrap_server_data.ip_address}:{BOOTSTRAP_SERVER_PORT}"
+        )
         async with grpc.aio.insecure_channel(bootstrap_address) as channel:
             stub = BootstrapStub(channel)
             response: GenerateSharesResponse = await stub.GenerateShares(
@@ -98,9 +121,9 @@ class Manager(ManagerServicer):
                     public_keys=public_keys,
                 )
             )
-        ######################
-        # TODO: Kill bootstrap
-        ######################
+
+        # terminate bootstrap
+        await self._setup_master_service.terminate_service(bootstrap_server_data)
 
         # Get user's share, assuming it is the last one
         user_share = response.encrypted_shares.pop()
@@ -137,10 +160,6 @@ class Manager(ManagerServicer):
             f"Retrieving secret {request.secret_id} for user {request.user_id}"
         )
 
-        ###################################
-        # TODO: Validate request.auth_token
-        ###################################
-
         if not self._validate_server_ready(
             context
         ) or not await self._validate_user_exists(request.user_id, context):
@@ -159,7 +178,9 @@ class Manager(ManagerServicer):
         servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
         for server_adress in servers_addresses:
-            async with grpc.aio.insecure_channel(server_adress) as channel:
+            async with grpc.aio.insecure_channel(
+                f"{server_adress}:{SHARE_SERVER_PORT}"
+            ) as channel:
                 stub = ShareServerStub(channel)
                 response = await stub.Decrypt(user_id=request.user_id, secret=secret)
                 partial_decryptions.append(response.partial_decrypted_secret)
@@ -167,6 +188,25 @@ class Manager(ManagerServicer):
             partial_decryptions=partial_decryptions, secret=secret
         )
 
+    async def launch_all_share_servers(self):
+        for i in range(self._num_of_share_servers):
+            self._logger.debug(f"creating share server number {i}")
+            self._share_servers_data.append(
+                await self._setup_master_service.spawn_share_server()
+            )
+
+        # TODO: make paralel and by not blocking on each share server and sample the db.
+
+    async def terminate_all_share_servers(self):
+        for share_server_data in self._share_servers_data:
+            self._logger.debug(
+                f"terminating share server with container id {share_server_data.container_id}"
+            )
+            await self._setup_master_service.terminate_service(share_server_data)
+
+        # TODO: make paralel and by not blocking on each share server and sample the db.
+
+    # private methdods
     def _validate_server_ready(self, context):
         if not self._ready:
             self._logger.debug("Server is not ready to accept requests")

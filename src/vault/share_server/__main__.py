@@ -1,14 +1,14 @@
 import asyncio
 
-from vault.common.generated import setup_pb2
 from vault.common.setup_unit import SetupUnit
 
 from vault.share_server.share_server import ShareServer
 from vault.common.constants import SHARE_SERVER_PORT
+from vault.common import types
 
 
 async def main():
-    setup_unit = SetupUnit(setup_pb2.ServiceType.BOOSTRAP_SERVER)
+    setup_unit = SetupUnit(types.ServiceType.SHARE_SERVER)
 
     print("stating share server...")
     # TODO: run here the share_server service!

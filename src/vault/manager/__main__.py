@@ -1,36 +1,35 @@
 import asyncio
 
-from vault.common.constants import DB_URL
-from vault.manager.db_manager import DBManager
-from vault.manager.setup_master import SetupMaster
+from vault.common.constants import (
+    MANAGER_SERVER_PORT,
+    DB_DNS_ADDRESS,
+    DB_PORT,
+    DB_USERNAME,
+    DB_PASSWORD,
+    DB_NAME,
+)
+from vault.manager.manager import Manager
 
 
 async def main():
-    db_url = DB_URL
-    db_manager = await DBManager.create(db_url)
-
-    print("before!", flush=True)
-    setup_master = await SetupMaster.create(db_manager)
-    print("after!", flush=True)
-
-    print("spawning bootstrap server", flush=True)
-    bootstrap_service_data = await setup_master.spawn_bootstrap_server()
-
-    print("spawning share server", flush=True)
-    share_server_data = await setup_master.spawn_share_server()
-
-    print("spawned, sleeping...", flush=True)
+    NUMBER_OF_SHARES = 2
+    manager_server = Manager(
+        port=MANAGER_SERVER_PORT,
+        ip="[::]",
+        db_host=DB_DNS_ADDRESS,
+        db_port=DB_PORT,
+        db_username=DB_USERNAME,
+        db_password=DB_PASSWORD,
+        db_name=DB_NAME,
+        num_of_share_servers=NUMBER_OF_SHARES,
+    )
+    await manager_server.start()
+    print("spawned and started, sleeping...", flush=True)
     # do work with the bootstrap server
-    await asyncio.sleep(10)
+    await asyncio.sleep(5)
     print("wakeup!...", flush=True)
 
-    print("waiting for unregistration", flush=True)
-    await setup_master.terminate_service(bootstrap_service_data)
-    await setup_master.terminate_service(share_server_data)
-    print("unregistered", flush=True)
-    # Wait for container to finish and get logs
-
-    await db_manager.close()
+    await manager_server.stop()
 
 
 if __name__ == "__main__":
