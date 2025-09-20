@@ -7,12 +7,12 @@ from vault.common.constants import (
     DB_USERNAME,
     DB_PASSWORD,
     DB_NAME,
+    MANAGER_NUM_SHARE_SERVERS,
 )
 from vault.manager.manager import Manager
 
 
 async def main():
-    NUMBER_OF_SHARES = 2
     manager_server = Manager(
         port=MANAGER_SERVER_PORT,
         ip="[::]",
@@ -21,12 +21,12 @@ async def main():
         db_username=DB_USERNAME,
         db_password=DB_PASSWORD,
         db_name=DB_NAME,
-        num_of_share_servers=NUMBER_OF_SHARES,
+        num_of_share_servers=MANAGER_NUM_SHARE_SERVERS,
     )
     await manager_server.start()
     print("spawned and started, sleeping...", flush=True)
-    # do work with the bootstrap server
-    await asyncio.sleep(5)
+
+    await asyncio.sleep(600)
     print("wakeup!...", flush=True)
 
     await manager_server.stop()
