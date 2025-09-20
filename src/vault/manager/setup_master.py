@@ -71,18 +71,18 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         return setup_pb2.SetupUnregisterResponse(is_unregistered=is_unregistered)
 
     # API methods
-    async def do_setup(self, share_servers_num: int):
-        for i in range(share_servers_num):
-            print(f"spawning shareServer {i}")
-            self._spawn_share_server()
-        async with self._is_setup_finished_lock:
-            self._is_setup_finished = True
+    # async def do_setup(self, share_servers_num: int):
+    #     for i in range(share_servers_num):
+    #         print(f"spawning shareServer {i}")
+    #         self.spawn_share_server()
+    #     async with self._is_setup_finished_lock:
+    #         self._is_setup_finished = True
 
-    async def is_setup_finished(self) -> bool:
-        async with self._is_setup_finished_lock:
-            return self._is_setup_finished
+    # async def is_setup_finished(self) -> bool:
+    #     async with self._is_setup_finished_lock:
+    #         return self._is_setup_finished
 
-    async def spawn_bootstrap_service(self, block: bool = True):
+    async def spawn_bootstrap_server(self, block: bool = True):
         self.bootstrap_idx += 1
         print("spawn_container", flush=True)
         container = docker_utils.spawn_container(
@@ -92,7 +92,23 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         )
         service_data = None
         if block:
-            print("waiting for registration", flush=True)
+            print("waiting for bootstrap registration", flush=True)
+            service_data: types.ServiceData = (
+                await self._wait_for_container_id_registration(container.short_id)
+            )
+        return service_data
+
+    async def spawn_share_server(self, block: bool = True):
+        self.share_server_idx += 1
+        container = docker_utils.spawn_container(
+            DOCKER_IMAGE_NAME,
+            container_name=f"vault-share-{self.bootstrap_idx}",
+            command=DOCKER_SHARE_SERVER_COMMAND,
+        )
+
+        service_data = None
+        if block:
+            print("waiting for share server registration", flush=True)
             service_data: types.ServiceData = (
                 await self._wait_for_container_id_registration(container.short_id)
             )
@@ -128,21 +144,6 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         except asyncio.CancelledError:
             print("Stoppig setup master service...")
             await server.stop(grace=10)  # grace period of 10 seconds
-
-    async def _spawn_share_service(self, block: bool = True):
-        self.share_server_idx += 1
-        container = docker_utils.spawn_container(
-            DOCKER_IMAGE_NAME,
-            container_name=f"vault-share-{self.bootstrap_idx}",
-            command=DOCKER_SHARE_SERVER_COMMAND,
-        )
-
-        service_data = None
-        if block:
-            service_data: types.ServiceData = (
-                await self._wait_for_container_id_registration(container.short_id)
-            )
-        return service_data
 
     async def _get_container_data(
         self, container_id: str

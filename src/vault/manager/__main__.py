@@ -14,7 +14,10 @@ async def main():
     print("after!", flush=True)
 
     print("spawning bootstrap server", flush=True)
-    service_data = await setup_master.spawn_bootstrap_service()
+    bootstrap_service_data = await setup_master.spawn_bootstrap_server()
+
+    print("spawning share server", flush=True)
+    share_server_data = await setup_master.spawn_share_server()
 
     print("spawned, sleeping...", flush=True)
     # do work with the bootstrap server
@@ -22,7 +25,8 @@ async def main():
     print("wakeup!...", flush=True)
 
     print("waiting for unregistration", flush=True)
-    await setup_master.terminate_service(service_data)
+    await setup_master.terminate_service(bootstrap_service_data)
+    await setup_master.terminate_service(share_server_data)
     print("unregistered", flush=True)
     # Wait for container to finish and get logs
 
