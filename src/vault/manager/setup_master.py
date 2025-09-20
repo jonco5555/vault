@@ -15,15 +15,18 @@ from vault.common.constants import (
 )
 from vault.common.generated import setup_pb2, setup_pb2_grpc
 from vault.manager.db_manager import DBManager
+from vault.crypto.certificate_manager import get_certificate_manager
+from vault.crypto.grpc_ssl import SSLContext
 
 
-class SetupMaster(setup_pb2_grpc.SetupMaster):
+class SetupMaster(setup_pb2_grpc.SetupMasterServicer):
     def __init__(
         self,
         db: DBManager,
         server_ip: str = "[::]",
+        ssl_context: Optional[SSLContext] = None,
     ):
-        setup_pb2_grpc.SetupMaster.__init__(self)
+        setup_pb2_grpc.SetupMasterServicer.__init__(self)
         self._db = db
         self._wait_for_container_id_condition = asyncio.Condition()
 
@@ -31,6 +34,15 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._is_setup_finished_lock = asyncio.Lock()
 
         self._server_ip = server_ip
+        
+        # SSL context for secure gRPC communication
+        if ssl_context is None:
+            # Create a default SSL context for setup master
+            cert_manager = get_certificate_manager()
+            self._ssl_context = cert_manager.issue_client_certificate("setup-master")
+        else:
+            self._ssl_context = ssl_context
+        
         self._running_server_task = asyncio.create_task(
             self._start_setup_master_server(self._server_ip)
         )
@@ -101,7 +113,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self, service_data: types.ServiceData, block: bool = True
     ):
         _address = f"{service_data.ip_address}:{SETUP_PORT}"
-        async with grpc.aio.insecure_channel(_address) as channel:
+        async with self._ssl_context.create_secure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())
         if block:
@@ -118,14 +130,18 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         try:
             server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
             setup_pb2_grpc.add_SetupMasterServicer_to_server(self, server)
-            server.add_insecure_port(f"{server_ip}:{SETUP_PORT}")
+            
+            # Use secure server credentials
+            server_credentials = self._ssl_context.create_server_credentials()
+            server.add_secure_port(f"{server_ip}:{SETUP_PORT}", server_credentials)
+            
             await server.start()
             print(
-                f"SetupMaster started start_setup_master_server on port {SETUP_PORT}..."
+                f"SetupMaster started secure server on port {SETUP_PORT}..."
             )
             await server.wait_for_termination()
         except asyncio.CancelledError:
-            print("Stoppig setup master service...")
+            print("Stopping setup master service...")
             await server.stop(grace=10)  # grace period of 10 seconds
 
     async def _spawn_share_service(self, block: bool = True):

@@ -1,5 +1,6 @@
 import asyncio
 from concurrent import futures
+from typing import Optional
 
 import grpc
 from google.protobuf.empty_pb2 import Empty
@@ -7,6 +8,8 @@ from google.protobuf.empty_pb2 import Empty
 from vault.common import docker_utils, types
 from vault.common.constants import SETUP_MASTER_DNS_ADDRESS, SETUP_PORT
 from vault.common.generated import setup_pb2, setup_pb2_grpc
+from vault.crypto.certificate_manager import get_certificate_manager
+from vault.crypto.grpc_ssl import SSLContext
 
 
 class SetupUnit(setup_pb2_grpc.SetupUnit):
@@ -15,6 +18,7 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         service_type: types.ServiceType,
         server_ip: str = "[::]",
         setup_master_address: str = SETUP_MASTER_DNS_ADDRESS,
+        ssl_context: Optional[SSLContext] = None,
     ):
         self._setup_master_address = setup_master_address
         self._setup_master_port = SETUP_PORT
@@ -24,6 +28,16 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
 
         self._server_ip = server_ip
         self._running_server = None
+        
+        # SSL context for secure gRPC communication
+        if ssl_context is None:
+            # Create a default SSL context for this setup unit
+            cert_manager = get_certificate_manager()
+            service_name = f"setup-unit-{service_type.value}"
+            self._ssl_context = cert_manager.issue_client_certificate(service_name)
+        else:
+            self._ssl_context = ssl_context
+        
         self._running_server_task = asyncio.create_task(
             self._start_setup_unit_server(self._server_ip)
         )
@@ -75,21 +89,25 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
                 futures.ThreadPoolExecutor(max_workers=2)
             )
             setup_pb2_grpc.add_SetupUnitServicer_to_server(self, self._running_server)
-            self._running_server.add_insecure_port(f"{server_ip}:{SETUP_PORT}")
+            
+            # Use secure server credentials
+            server_credentials = self._ssl_context.create_server_credentials()
+            self._running_server.add_secure_port(f"{server_ip}:{SETUP_PORT}", server_credentials)
+            
             await self._running_server.start()
             print(
-                f"SetupUnit started start_setup_master_server on port {SETUP_PORT}..."
+                f"SetupUnit started secure server on port {SETUP_PORT}..."
             )
             await self._running_server.wait_for_termination()
         except asyncio.CancelledError:
-            print("Stoppig setup unit service...")
+            print("Stopping setup unit service...")
             await self._running_server.stop(grace=10)  # grace period of 10 seconds
 
     async def _register(self, service_data: types.ServiceData):
         _address = f"{self._setup_master_address}:{self._setup_master_port}"
-        async with grpc.aio.insecure_channel(_address) as channel:
+        async with self._ssl_context.create_secure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupMasterStub(channel)
-            resp: setup_pb2.RegisterResponse = await stub.SetupRegister(
+            resp: setup_pb2.SetupRegisterResponse = await stub.SetupRegister(
                 types.ServiceData_to_SetupRegisterRequest(service_data)
             )
             if not resp.is_registered:
@@ -99,10 +117,10 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
 
     async def _unregister(self, container_id: str):
         _address = f"{self._setup_master_address}:{self._setup_master_port}"
-        async with grpc.aio.insecure_channel(_address) as channel:
+        async with self._ssl_context.create_secure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupMasterStub(channel)
-            resp: setup_pb2.UnregisterResponse = await stub.Unregister(
-                setup_pb2.UnregisterRequest(container_id=container_id)
+            resp: setup_pb2.SetupUnregisterResponse = await stub.SetupUnregister(
+                setup_pb2.SetupUnregisterRequest(container_id=container_id)
             )
             if not resp.is_unregistered:
                 raise RuntimeError(f"could not unregister container_id {container_id}")

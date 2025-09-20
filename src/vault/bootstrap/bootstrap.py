@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import grpc
 
@@ -8,8 +9,9 @@ from vault.common.generated.vault_pb2_grpc import (
     add_BootstrapServicer_to_server,
 )
 from vault.crypto.asymmetric import encrypt
-from vault.crypto.ssl import generate_cert_and_keys
 from vault.crypto.threshold import generate_key_and_shares
+from vault.crypto.certificate_manager import get_certificate_manager
+from vault.crypto.grpc_ssl import SSLContext
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -17,18 +19,25 @@ logging.basicConfig(
 
 
 class Bootstrap(BootstrapServicer):
-    def __init__(self, port: int):
+    def __init__(self, port: int, ssl_context: Optional[SSLContext] = None):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
-        self._cert, self._ssl_pubkey, self._ssl_privkey = generate_cert_and_keys(
-            common_name="bootstrap"
-        )
+        
+        # SSL context for secure gRPC communication
+        if ssl_context is None:
+            # Create a default SSL context for bootstrap
+            cert_manager = get_certificate_manager()
+            self._ssl_context = cert_manager.issue_client_certificate("bootstrap")
+        else:
+            self._ssl_context = ssl_context
 
         # grpc server
-        creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
         self._server = grpc.aio.server()
         add_BootstrapServicer_to_server(self, self._server)
-        self._port = self._server.add_secure_port(f"[::]:{self._port}", creds)
+        
+        # Use secure server credentials
+        server_credentials = self._ssl_context.create_server_credentials()
+        self._port = self._server.add_secure_port(f"[::]:{self._port}", server_credentials)
 
     async def start(self):
         await self._server.start()
