@@ -11,7 +11,8 @@ from vault.common.constants import (
     DOCKER_BOOTSTRAP_SERVER_COMMAND,
     DOCKER_IMAGE_NAME,
     DOCKER_SHARE_SERVER_COMMAND,
-    SETUP_PORT,
+    SETUP_MASTER_SERVICE_PORT,
+    SETUP_UNIT_SERVICE_PORT,
 )
 from vault.common.generated import setup_pb2, setup_pb2_grpc
 from vault.manager.db_manager import DBManager
@@ -100,7 +101,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
     async def terminate_service(
         self, service_data: types.ServiceData, block: bool = True
     ):
-        _address = f"{service_data.ip_address}:{SETUP_PORT}"
+        _address = f"{service_data.ip_address}:{SETUP_UNIT_SERVICE_PORT}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())
@@ -118,10 +119,10 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         try:
             server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
             setup_pb2_grpc.add_SetupMasterServicer_to_server(self, server)
-            server.add_insecure_port(f"{server_ip}:{SETUP_PORT}")
+            server.add_insecure_port(f"{server_ip}:{SETUP_MASTER_SERVICE_PORT}")
             await server.start()
             print(
-                f"SetupMaster started start_setup_master_server on port {SETUP_PORT}..."
+                f"SetupMaster started start_setup_master_server on port {SETUP_MASTER_SERVICE_PORT}..."
             )
             await server.wait_for_termination()
         except asyncio.CancelledError:
