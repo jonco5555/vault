@@ -48,7 +48,7 @@ class AuthClient:
         self,
         username: str,
         password: str,
-        request_probuf: Union[
+        request_protobuf: Union[
             vault_pb2.RegisterRequest,
             vault_pb2.StoreSecretRequest,
             vault_pb2.RetrieveSecretRequest,
@@ -99,7 +99,7 @@ class AuthClient:
                 raise RuntimeError("expected ok")
 
             # send application request
-            app_req = self._create_inner_request_from_user_request(request_probuf)
+            app_req = self._create_inner_request_from_user_request(request_protobuf)
             await call.write(auth_pb2.SecureReqMsgWrapper(app_req=app_req))
 
             # read app response
@@ -113,20 +113,22 @@ class AuthClient:
 
     def _create_inner_request_from_user_request(
         self,
-        request_probuf: Union[
+        request_protobuf: Union[
             vault_pb2.RegisterRequest,
             vault_pb2.StoreSecretRequest,
             vault_pb2.RetrieveSecretRequest,
         ],
     ) -> auth_pb2.InnerRequest:
-        if type(request_probuf) is vault_pb2.RegisterRequest:
-            return auth_pb2.InnerRequest(register=request_probuf)
-        elif type(request_probuf) is vault_pb2.StoreSecretRequest:
-            return auth_pb2.InnerRequest(store=request_probuf)
-        elif type(request_probuf) is vault_pb2.RetrieveSecretRequest:
-            return auth_pb2.InnerRequest(retrieve=request_probuf)
+        if type(request_protobuf) is vault_pb2.RegisterRequest:
+            return auth_pb2.InnerRequest(register=request_protobuf)
+        elif type(request_protobuf) is vault_pb2.StoreSecretRequest:
+            return auth_pb2.InnerRequest(store=request_protobuf)
+        elif type(request_protobuf) is vault_pb2.RetrieveSecretRequest:
+            return auth_pb2.InnerRequest(retrieve=request_protobuf)
         else:
-            raise RuntimeError(f"unknown request_probuf type: {type(request_probuf)}")
+            raise RuntimeError(
+                f"unknown request_protobuf type: {type(request_protobuf)}"
+            )
 
     def _create_user_response_from_inner_response(
         self,
