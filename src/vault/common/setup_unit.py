@@ -40,8 +40,8 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         return Empty()
 
     # API methods
-    async def init_and_wait_for_shutdown(self):
-        await self.register()
+    async def init_and_wait_for_shutdown(self, pub_key: str = b"blabla"):
+        await self.register(pub_key)
         async with self._termination_condvar:
             await self._termination_condvar.wait()
 
@@ -49,14 +49,13 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         await self.unregister()
         await self._running_server.stop(grace=10)  # 10 seconds to gracefuly shutdown
 
-    async def register(self):
+    async def register(self, pub_key: str):
         self_container_id = docker_utils.get_self_container_id()
         service_data = types.ServiceData(
             type=self._service_type,
             container_id=self_container_id,
             ip_address=docker_utils.get_container_address(self_container_id),
-            # TODO: generate real private & public key
-            public_key=b"blabla",
+            public_key=pub_key,
         )
 
         await self._register(service_data)

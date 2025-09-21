@@ -1,7 +1,14 @@
 import logging
 from typing import List
+
 import grpc
 
+from vault.common import types
+from vault.common.constants import (
+    BOOTSTRAP_SERVER_PORT,
+    SETUP_MASTER_SERVICE_PORT,
+    SHARE_SERVER_PORT,
+)
 from vault.common.generated.vault_pb2 import (
     GenerateSharesRequest,
     GenerateSharesResponse,
@@ -10,19 +17,13 @@ from vault.common.generated.vault_pb2 import (
     RetrieveSecretResponse,
     Secret,
     StoreSecretResponse,
+    StoreShareRequest,
 )
 from vault.common.generated.vault_pb2_grpc import (
     BootstrapStub,
     ManagerServicer,
     ShareServerStub,
     add_ManagerServicer_to_server,
-)
-
-from vault.common import types
-from vault.common.constants import (
-    BOOTSTRAP_SERVER_PORT,
-    SHARE_SERVER_PORT,
-    SETUP_MASTER_SERVICE_PORT,
 )
 from vault.manager.db_manager import DBManager
 from vault.manager.setup_master import SetupMaster
@@ -133,7 +134,13 @@ class Manager(ManagerServicer):
         for share, server_adress in zip(response.encrypted_shares, servers_addresses):
             async with grpc.aio.insecure_channel(server_adress) as channel:
                 stub = ShareServerStub(channel)
-                await stub.StoreShare(encrypted_share=share, user_id=request.user_id)
+                response = await stub.StoreShare(
+                    StoreShareRequest(user_id=request.user_id, encrypted_share=share)
+                )
+                if not response.success:
+                    self._logger.error(
+                        f"Failed to store share on server {server_adress}"
+                    )
 
         # Send to user his share and encryption key
         return RegisterResponse(
@@ -231,7 +238,7 @@ class Manager(ManagerServicer):
             return False
         return True
 
-    async def _validate_num_of_servers_in_db(self, num_in_db: int, context):
+    def _validate_num_of_servers_in_db(self, num_in_db: int, context):
         if num_in_db != self._num_of_share_servers:
             self._logger.debug(
                 f"Not enough share servers registered. Required: {self._num_of_share_servers}, Available: {num_in_db}"

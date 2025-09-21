@@ -49,7 +49,7 @@ class DBManager:
         self._logger = logging.getLogger(__class__.__name__)
         self._logger.info(f"initializing with {db_url=}")
         self._engine = create_async_engine(
-            db_url, echo=True, poolclass=NullPool
+            db_url, poolclass=NullPool
         )  # TODO: Using NullPool made the tests pass, need to investigate
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
 

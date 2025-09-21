@@ -1,3 +1,5 @@
+import logging
+
 import grpc
 
 from vault.common.generated.vault_pb2 import (
@@ -10,6 +12,10 @@ from vault.common.types import Key
 from vault.crypto.asymmetric import generate_key_pair
 from vault.crypto.threshold import decrypt, encrypt, partial_decrypt
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 
 class User:
     def __init__(
@@ -20,6 +26,7 @@ class User:
         threshold: int,
         num_of_share_servers: int,
     ):
+        self._logger = logging.getLogger(__class__.__name__)
         self._user_id = user_id
         self._server_ip = server_ip
         self._server_port = server_port

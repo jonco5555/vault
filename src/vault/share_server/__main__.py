@@ -1,10 +1,9 @@
 import asyncio
 
-from vault.common.setup_unit import SetupUnit
-
-from vault.share_server.share_server import ShareServer
-from vault.common.constants import SHARE_SERVER_PORT
 from vault.common import types
+from vault.common.constants import SHARE_SERVER_PORT
+from vault.common.setup_unit import SetupUnit
+from vault.share_server.share_server import ShareServer
 
 
 async def main():
@@ -16,7 +15,7 @@ async def main():
     await share_server.start()
 
     print("initing and waiting for shutdown...")
-    await setup_unit.init_and_wait_for_shutdown()
+    await setup_unit.init_and_wait_for_shutdown(share_server._pubkey_b64)
 
     print("terminating share server...")
     # TODO: kill here the share_server service!
