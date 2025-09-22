@@ -41,11 +41,8 @@ class ShareServer(ShareServerServicer):
             await self._server.stop(grace=5.0)
         self._logger.info("Share server stopped")
 
-    # TODO: Register to manager as server
-    async def register():
-        pass
-
     async def StoreShare(self, request, context):
+        self._logger.info(f"Share server storing share for {request.user_id}")
         if request.user_id in self._encrypted_shares:
             context.set_code(grpc.StatusCode.ALREADY_EXISTS)
             context.set_details("Share for this user already exists.")
@@ -54,6 +51,7 @@ class ShareServer(ShareServerServicer):
         return StoreShareResponse(success=True)
 
     async def DeleteShare(self, request, context):
+        self._logger.info(f"Share server deleting share for {request.user_id}")
         if request.user_id not in self._encrypted_shares:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("Share does not exist for this user")
@@ -62,6 +60,7 @@ class ShareServer(ShareServerServicer):
         return DeleteShareResponse(success=True)
 
     async def Decrypt(self, request, context):
+        self._logger.info(f"Share server decrypting using share for {request.user_id}")
         if request.user_id not in self._encrypted_shares:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("No share found for this user.")

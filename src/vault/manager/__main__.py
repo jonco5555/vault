@@ -11,6 +11,30 @@ from vault.common.constants import (
 )
 from vault.manager.manager import Manager
 
+import signal
+
+
+async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
+    loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
+
+    def handler(sig):
+        print(f"Received signal: {sig!s}")
+        stop_event.set()
+
+    # Register signal handlers
+    for sig in signals:
+        loop.add_signal_handler(sig, handler, sig)
+
+    print("Sleeping until a signal is received... (Ctrl+C to interrupt)")
+    await stop_event.wait()
+
+    # Cleanup handlers
+    for sig in signals:
+        loop.remove_signal_handler(sig)
+
+    print("Exiting gracefully.")
+
 
 async def main():
     manager_server = Manager(
@@ -24,11 +48,11 @@ async def main():
         num_of_share_servers=MANAGER_NUM_SHARE_SERVERS,
     )
     await manager_server.start()
-    print("spawned and started, sleeping...", flush=True)
+    print("spawned and started, waiting for signal for termination...", flush=True)
 
-    await asyncio.sleep(600)
-    print("wakeup!...", flush=True)
+    await wait_for_signal()
 
+    print("go termination signal, cleanup!...", flush=True)
     await manager_server.stop()
 
 

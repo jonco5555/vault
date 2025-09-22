@@ -13,7 +13,7 @@ async def simulate_client():
         server_ip=MANAGER_SERVER_DNS_ADDRESS,
         server_port=MANAGER_SERVER_PORT,
         threshold=MANAGER_NUM_SHARE_SERVERS + 1,
-        num_of_share_servers=MANAGER_NUM_SHARE_SERVERS,
+        num_of_total_shares=MANAGER_NUM_SHARE_SERVERS + 1,
     )
 
     print("=== Simulating Client Operations ===", flush=True)
@@ -33,9 +33,22 @@ async def simulate_client():
     print("-> Retrieval phase", flush=True)
     retrieved_secret = await user.retrieve_secret(secret_id)
 
-    print(f"{retrieved_secret=}, {secret=}", flush=True)
     if retrieved_secret != secret:
         raise RuntimeError(f"Expected {secret=}, got {retrieved_secret=}")
+
+    print("-> Storage phase2", flush=True)
+    secret2 = "my super secret2"
+    secret_id2 = "my super secret id2"
+    await user.store_secret(secret2, secret_id2)
+
+    # Step 3: Retrieve secret
+    print("-> Retrieval phase2", flush=True)
+    retrieved_secret2 = await user.retrieve_secret(secret_id2)
+
+    if retrieved_secret2 != secret2:
+        raise RuntimeError(f"Expected {secret=}, got {retrieved_secret=}")
+
+    print("VICTORYYYYYY", flush=True)
 
 
 if __name__ == "__main__":

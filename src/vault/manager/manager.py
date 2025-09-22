@@ -18,6 +18,9 @@ from vault.common.generated.vault_pb2 import (
     Secret,
     StoreSecretResponse,
     StoreShareRequest,
+    StoreShareResponse,
+    DecryptRequest,
+    DecryptResponse,
 )
 from vault.common.generated.vault_pb2_grpc import (
     BootstrapStub,
@@ -115,7 +118,7 @@ class Manager(ManagerServicer):
         )
         async with grpc.aio.insecure_channel(bootstrap_address) as channel:
             stub = BootstrapStub(channel)
-            response: GenerateSharesResponse = await stub.GenerateShares(
+            bootstrap_response: GenerateSharesResponse = await stub.GenerateShares(
                 GenerateSharesRequest(
                     threshold=self._num_of_share_servers + 1,  # +1 for the user
                     num_of_shares=self._num_of_share_servers + 1,
@@ -127,24 +130,28 @@ class Manager(ManagerServicer):
         await self._setup_master_service.terminate_service(bootstrap_server_data)
 
         # Get user's share, assuming it is the last one
-        user_share = response.encrypted_shares.pop()
+        user_share = bootstrap_response.encrypted_shares.pop()
 
         # Send shares to share servers
         servers_addresses = await self._db.get_servers_addresses()
-        for share, server_adress in zip(response.encrypted_shares, servers_addresses):
-            async with grpc.aio.insecure_channel(server_adress) as channel:
+        for share, server_adress in zip(
+            bootstrap_response.encrypted_shares, servers_addresses
+        ):
+            async with grpc.aio.insecure_channel(
+                f"{server_adress}:{SHARE_SERVER_PORT}"
+            ) as channel:
                 stub = ShareServerStub(channel)
-                response = await stub.StoreShare(
+                share_server_response: StoreShareResponse = await stub.StoreShare(
                     StoreShareRequest(user_id=request.user_id, encrypted_share=share)
                 )
-                if not response.success:
+                if not share_server_response.success:
                     self._logger.error(
                         f"Failed to store share on server {server_adress}"
                     )
 
         # Send to user his share and encryption key
         return RegisterResponse(
-            encrypted_share=user_share, encrypted_key=response.encrypted_key
+            encrypted_share=user_share, encrypted_key=bootstrap_response.encrypted_key
         )
 
     async def StoreSecret(self, request, context):
@@ -189,7 +196,9 @@ class Manager(ManagerServicer):
                 f"{server_adress}:{SHARE_SERVER_PORT}"
             ) as channel:
                 stub = ShareServerStub(channel)
-                response = await stub.Decrypt(user_id=request.user_id, secret=secret)
+                response: DecryptResponse = await stub.Decrypt(
+                    DecryptRequest(user_id=request.user_id, secret=secret)
+                )
                 partial_decryptions.append(response.partial_decrypted_secret)
         return RetrieveSecretResponse(
             partial_decryptions=partial_decryptions, secret=secret
