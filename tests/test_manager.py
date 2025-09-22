@@ -15,6 +15,8 @@ from vault.common.generated.vault_pb2 import (
 )
 from vault.manager.manager import Manager
 
+MANAGER_IP = "127.0.0.1"
+
 
 @pytest.fixture
 def secret_id() -> str:
@@ -31,6 +33,7 @@ async def manager(db: PostgresContainer) -> typing.AsyncGenerator[Manager, None]
         db_password=db.password,
         db_name=db.dbname,
         num_of_share_servers=3,
+        ip=MANAGER_IP,
     )
     manager._ready = True
     await manager._db.start()

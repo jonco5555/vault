@@ -37,12 +37,19 @@ class Server(Base):
     public_key: Mapped[bytes] = mapped_column()
 
 
+class AuthClient(Base):
+    __tablename__ = "auth_clients"
+    username: Mapped[str] = mapped_column(primary_key=True)
+    verifier: Mapped[str] = mapped_column()
+    salt: Mapped[str] = mapped_column()
+
+
 class DBManager:
     def __init__(self, db_url: str):
         self._logger = logging.getLogger(__class__.__name__)
         self._logger.info(f"initializing with {db_url=}")
         self._engine = create_async_engine(
-            db_url, echo=True, poolclass=NullPool
+            db_url, poolclass=NullPool
         )  # TODO: Using NullPool made the tests pass, need to investigate
         self._session = async_sessionmaker(bind=self._engine, expire_on_commit=False)
 
@@ -152,3 +159,39 @@ class DBManager:
             result = await session.execute(select(Server))
             servers = result.scalars().all()
             return [server.ip_address for server in servers]
+
+    async def add_auth_client(self, username: str, verifier: str, salt: str):
+        self._logger.info(f"Adding AuthClient with {username=}")
+        async with self._session() as session:
+            entry = AuthClient(
+                username=username,
+                verifier=verifier,
+                salt=salt,
+            )
+            session.add(entry)
+            await session.commit()
+
+    async def get_auth_client_verifier(self, username: str) -> str:
+        self._logger.info(f"Retrieving AuthClient auth_record for {username=}")
+        async with self._session() as session:
+            result = await session.get(AuthClient, username)
+            if not result:
+                raise RuntimeError(f"AuthClient with {username=} doesnt exist")
+            return result.verifier
+
+    async def get_auth_client_salt(self, username: str) -> str:
+        self._logger.info(f"Retrieving AuthClient auth_record for {username=}")
+        async with self._session() as session:
+            result = await session.get(AuthClient, username)
+            if not result:
+                raise RuntimeError(f"AuthClient with {username=} doesnt exist")
+            return result.salt
+
+    async def remove_auth_client(self, username: str):
+        self._logger.info(f"Retrieving AuthClient auth_record for {username=}")
+        async with self._session() as session:
+            row = await session.get(AuthClient, username)
+            if not row:
+                raise RuntimeError(f"AuthClient with {username=} doesnt exist")
+            await session.delete(row)
+            await session.commit()

@@ -1,15 +1,22 @@
+import logging
+
 import grpc
 
 from vault.common.generated.vault_pb2 import (
     RegisterRequest,
+    RegisterResponse,
     RetrieveSecretRequest,
+    RetrieveSecretResponse,
     StoreSecretRequest,
+    StoreSecretResponse,
 )
 from vault.common.generated.vault_pb2_grpc import ManagerStub
 from vault.common.types import Key
-from vault.crypto.asymmetric import generate_key_pair
-from vault.crypto.certs import load_ca_cert
-from vault.crypto.threshold import decrypt, encrypt, partial_decrypt
+from vault.crypto import asymmetric, certs, threshold
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 class User:
@@ -20,17 +27,20 @@ class User:
         server_port: int,
         threshold: int,
         num_of_share_servers: int,
+        num_of_total_shares: int,
         ca_cert_path: str = "certs/ca.crt",
     ):
+        self._logger = logging.getLogger(__class__.__name__)
         self._user_id = user_id
         self._server_ip = server_ip
         self._server_port = server_port
         self._threshold = threshold
+        self._num_of_total_shares = num_of_total_shares
         self._num_of_share_servers = num_of_share_servers
-        self._privkey_b64, self._pubkey_b64 = generate_key_pair()
-        self._ca_cert = load_ca_cert(ca_cert_path)
+        self._privkey_b64, self._pubkey_b64 = asymmetric.generate_key_pair()
+        self._ca_cert = certs.load_ca_cert(ca_cert_path)
         self._creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
-        self.encrypted_share = None
+        self._encrypted_share = None
         self._encryption_key = None
         self._secrets_ids = set()
 
@@ -39,7 +49,7 @@ class User:
             f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
-            response = await stub.Register(
+            response: RegisterResponse = await stub.Register(
                 RegisterRequest(
                     user_id=self._user_id,
                     user_public_key=self._pubkey_b64,
@@ -48,20 +58,20 @@ class User:
 
             self._encrypted_share = response.encrypted_share
             self._encryption_key = Key.model_validate_json(
-                decrypt(
-                    self._encrypted_shares.get(response.encrypted_key),
+                asymmetric.decrypt(
+                    response.encrypted_key,
                     self._privkey_b64,
                 )
             )
 
     async def store_secret(self, secret: str, secret_id: str) -> bool:
         self._secrets_ids.add(secret_id)
-        encrypted_secret = encrypt(secret, self._encryption_key)
+        encrypted_secret = threshold.encrypt(secret, self._encryption_key)
         async with grpc.aio.secure_channel(
             f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
-            response = await stub.StoreSecret(
+            response: StoreSecretResponse = await stub.StoreSecret(
                 StoreSecretRequest(
                     user_id=self._user_id,
                     secret_id=secret_id,
@@ -80,7 +90,7 @@ class User:
             f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
-            response = await stub.RetrieveSecret(
+            response: RetrieveSecretResponse = await stub.RetrieveSecret(
                 RetrieveSecretRequest(
                     user_id=self._user_id,
                     secret_id=secret_id,
@@ -93,14 +103,18 @@ class User:
             return None
 
         share = Key.model_validate_json(
-            decrypt(self._encrypted_share, self._privkey_b64)
+            asymmetric.decrypt(self._encrypted_share, self._privkey_b64)
         )
-        partial_decrypted = partial_decrypt(response.secret, share)
-        decrypted_secret = decrypt(
-            [response.partial_decryptions, partial_decrypted],
+        partial_decrypted = threshold.partial_decrypt(response.secret, share)
+
+        list_partially_decrypted = [partial_decrypted]
+        list_partially_decrypted.extend(response.partial_decryptions)
+
+        decrypted_secret = threshold.decrypt(
+            list_partially_decrypted,
             response.secret,
             self._threshold,
-            self._num_of_share_servers,
+            self._num_of_total_shares,
         )
         return decrypted_secret
 

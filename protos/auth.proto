@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package vault;
+
+import "vault.proto";
+
+service AuthService {
+  // Register username over SRP protocol
+  rpc AuthRegister(AuthRegisterRequest) returns (AuthRegisterResponse);
+
+  // Single bidirectional stream: SRP login handshake + authenticated application request/response
+  rpc SecureCall(stream SecureReqMsgWrapper) returns (stream SecureRespMsgWrapper);
+}
+
+message AuthRegisterRequest {
+  string username = 1;
+  string verifier = 2;
+  string salt = 3;
+}
+
+message AuthRegisterResponse {
+  bool ok = 1;
+  string err = 2;
+}
+
+// wrapper for a real message
+message SRPFirstStep {
+  string username = 1;
+}
+
+message SRPSecondStep {
+  string server_public_key = 1;
+  string salt = 2;
+}
+
+message SRPThirdStep {
+  string client_public_key = 1;
+  string client_session_key_proof = 2;
+}
+
+message SRPThirdStepAck {
+  bool ok = 1;
+  string err = 2;
+}
+
+message InnerRequest {
+  oneof body {
+    RegisterRequest register = 1;
+    StoreSecretRequest store = 2;
+    RetrieveSecretRequest retrieve = 3;
+  }
+}
+
+message InnerResponse {
+  oneof body {
+    RegisterResponse register = 1;
+    StoreSecretResponse store = 2;
+    RetrieveSecretResponse retrieve = 3;
+  }
+}
+
+message SecureReqMsgWrapper {
+  oneof body {
+    SRPFirstStep first_step = 1;
+    SRPThirdStep third_step = 2;
+    InnerRequest app_req = 3;
+  }
+}
+
+message SecureRespMsgWrapper {
+  oneof body {
+    SRPSecondStep second_step = 1;
+    SRPThirdStepAck third_step_ack = 2;
+    InnerResponse app_resp = 3;
+  }
+}

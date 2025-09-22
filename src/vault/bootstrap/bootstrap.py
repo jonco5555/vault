@@ -45,6 +45,7 @@ class Bootstrap(BootstrapServicer):
         self._logger.info("Bootstrap server stopped")
 
     async def GenerateShares(self, request, context):
+        self._logger.info("Bootstrap generating shares!")
         encryption_key, shares = generate_key_and_shares(
             request.threshold, request.num_of_shares
         )

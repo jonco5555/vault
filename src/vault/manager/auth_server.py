@@ -1,0 +1,165 @@
+import logging
+import asyncio
+from concurrent import futures
+
+import grpc
+
+from vault.common.generated import vault_pb2_grpc
+from vault.common.generated import auth_pb2, auth_pb2_grpc
+from vault.manager.db_manager import DBManager
+from vault.crypto.authentication import (
+    srp_authentication_server_step_one,
+    srp_authentication_server_step_three,
+)
+
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("auth-server")
+
+
+# --- gRPC service implementation ---
+class AuthService(auth_pb2_grpc.AuthServiceServicer):
+    def __init__(
+        self,
+        db: DBManager,
+        server_ip: str,
+        server_port: int,
+        manager_server_ip: str,
+        manager_server_port: int,
+    ):
+        self._logger = logging.getLogger(__class__.__name__)
+        self._server_ip = server_ip
+        self._server_port = server_port
+        self._manager_server_ip = manager_server_ip
+        self._manager_server_port = manager_server_port
+
+        self._server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
+        auth_pb2_grpc.add_AuthServiceServicer_to_server(self, self._server)
+        self._server.add_insecure_port(f"{self._server_ip}:{self._server_port}")
+
+        # DB
+        self._db = db
+
+    async def AuthRegister(self, request: auth_pb2.AuthRegisterRequest, context):
+        logger.info("Register request for %s", request.username)
+        try:
+            await self._db.add_auth_client(
+                username=request.username, verifier=request.verifier, salt=request.salt
+            )
+        except Exception as e:
+            logger.exception("SRP registration failed")
+            return auth_pb2.AuthRegisterResponse(ok=False, err=str(e))
+        return auth_pb2.AuthRegisterResponse(ok=True)
+
+    async def SecureCall(self, request_iterator, context):
+        """
+        Bidirectional stream handling:
+        """
+        ait = request_iterator.__aiter__()
+
+        # 1) Expect client_init
+        try:
+            msg: auth_pb2.SecureReqMsgWrapper = await ait.__anext__()
+        except StopAsyncIteration:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "no messages")
+            return
+
+        if not msg or not msg.HasField("first_step"):
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected first_step")
+            return
+
+        username: str = msg.first_step.username
+        password_verifier: str = await self._db.get_auth_client_verifier(username)
+        salt: str = await self._db.get_auth_client_salt(username)
+
+        server_public, server_private = srp_authentication_server_step_one(
+            username=username,
+            password_verifier=password_verifier,
+        )
+        yield auth_pb2.SecureRespMsgWrapper(
+            second_step=auth_pb2.SRPSecondStep(
+                server_public_key=server_public,
+                salt=salt,
+            )
+        )
+
+        # 3) expect client_final
+        try:
+            msg2: auth_pb2.SecureReqMsgWrapper = await ait.__anext__()
+        except StopAsyncIteration:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "no third_step")
+            return
+
+        if not msg2 or not msg2.HasField("third_step"):
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected third_step")
+            return
+
+        client_public: str = msg2.third_step.client_public_key
+        client_session_key_proof: str = msg2.third_step.client_session_key_proof
+
+        _ = srp_authentication_server_step_three(
+            username=username,
+            password_verifier=password_verifier,
+            salt=salt,
+            server_private=server_private,
+            client_public=client_public,
+            client_session_key_proof=client_session_key_proof,
+        )
+
+        yield auth_pb2.SecureRespMsgWrapper(
+            third_step_ack=auth_pb2.SRPThirdStepAck(
+                ok=True,
+            )
+        )
+
+        # 5) expect application request
+        try:
+            msg3: auth_pb2.SecureReqMsgWrapper = await ait.__anext__()
+        except StopAsyncIteration:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected app_req")
+            return
+
+        if not msg3 or not msg3.HasField("app_req"):
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected app_req")
+            return
+
+        app_req: auth_pb2.InnerRequest = msg3.app_req
+        app_resp: auth_pb2.InnerResponse = await self._handle_user_inner_request(
+            app_req
+        )
+
+        yield auth_pb2.SecureRespMsgWrapper(app_resp=app_resp)
+
+    async def start_auth_server(self):
+        try:
+            await self._server.start()
+            logger.info(
+                f"AuthService started start_auth_server on port {self._server_port}..."
+            )
+            await self._server.wait_for_termination()
+        except asyncio.CancelledError:
+            logger.info("Stopping Authservice...")
+            await self._server.stop(grace=10)  # grace period of 10 seconds
+
+    async def _handle_user_inner_request(
+        self, inner_request: auth_pb2.InnerRequest
+    ) -> auth_pb2.InnerResponse:
+        async with grpc.aio.insecure_channel(
+            f"{self._manager_server_ip}:{self._manager_server_port}"
+        ) as channel:
+            stub = vault_pb2_grpc.ManagerStub(channel)
+
+            if inner_request.HasField("register"):
+                return auth_pb2.InnerResponse(
+                    register=await stub.Register(inner_request.register)
+                )
+            elif inner_request.HasField("store"):
+                return auth_pb2.InnerResponse(
+                    store=await stub.StoreSecret(inner_request.store)
+                )
+            elif inner_request.HasField("retrieve"):
+                return auth_pb2.InnerResponse(
+                    retrieve=await stub.RetrieveSecret(inner_request.retrieve)
+                )
+            else:
+                raise RuntimeError("unknown InnerRequest body type")
