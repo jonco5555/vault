@@ -58,6 +58,12 @@ def get_container_address(container_id: str) -> str:
     return next(iter(networks.values()))["IPAddress"]
 
 
+def get_container_name(container_id: str) -> str:
+    client = docker.DockerClient(base_url=f"unix:/{DOCKER_RUNTIME_SOCKET}")
+    container = client.containers.get(container_id)
+    return container.name
+
+
 async def wait_for_container_to_stop(container_id: str, timeout: float | None = None):
     client = docker.from_env()
     container = client.containers.get(container_id)

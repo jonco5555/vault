@@ -54,22 +54,13 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         service_data = types.ServiceData(
             type=self._service_type,
             container_id=self_container_id,
-            ip_address=docker_utils.get_container_address(self_container_id),
+            ip_address=docker_utils.get_container_name(self_container_id),
             public_key=pub_key,
         )
-
         await self._register(service_data)
 
     async def unregister(self):
         await self._unregister(docker_utils.get_self_container_id())
-
-    # TODO
-    def get_public_key():
-        pass
-
-    # TODO
-    def get_private_key():
-        pass
 
     # Private methods
     async def _start_setup_unit_server(self, server_ip: str = "[::]"):
