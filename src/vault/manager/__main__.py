@@ -1,17 +1,16 @@
 import asyncio
+import signal
 
 from vault.common.constants import (
-    MANAGER_SERVER_PORT,
     DB_DNS_ADDRESS,
+    DB_NAME,
+    DB_PASSWORD,
     DB_PORT,
     DB_USERNAME,
-    DB_PASSWORD,
-    DB_NAME,
     MANAGER_NUM_SHARE_SERVERS,
+    MANAGER_SERVER_PORT,
 )
 from vault.manager.manager import Manager
-
-import signal
 
 
 async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
@@ -52,7 +51,7 @@ async def main():
 
     await wait_for_signal()
 
-    print("go termination signal, cleanup!...", flush=True)
+    print("got termination signal, cleanup!...", flush=True)
     await manager_server.stop()
 
 

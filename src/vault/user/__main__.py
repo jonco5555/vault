@@ -1,10 +1,11 @@
 import asyncio
-from vault.user.user import User
+
 from vault.common.constants import (
+    MANAGER_NUM_SHARE_SERVERS,
     MANAGER_SERVER_DNS_ADDRESS,
     MANAGER_SERVER_PORT,
-    MANAGER_NUM_SHARE_SERVERS,
 )
+from vault.user.user import User
 
 
 async def simulate_client():
@@ -46,7 +47,7 @@ async def simulate_client():
     retrieved_secret2 = await user.retrieve_secret(secret_id2)
 
     if retrieved_secret2 != secret2:
-        raise RuntimeError(f"Expected {secret=}, got {retrieved_secret=}")
+        raise RuntimeError(f"Expected {secret2=}, got {retrieved_secret2=}")
 
     print("VICTORYYYYYY", flush=True)
 
