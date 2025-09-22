@@ -1,6 +1,4 @@
-docker-compose build
-
-docker-compose up &
+docker-compose up --build -d
 sleep 10
 docker run --rm -d --network vault-net --name vault-user vault:latest python -m src.vault.user
 docker attach vault-user

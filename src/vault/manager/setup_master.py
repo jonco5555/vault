@@ -72,12 +72,14 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
 
     # API methods
     async def spawn_bootstrap_server(self, block: bool = True) -> types.ServiceData:
+        # TODO: Bootstrap does not need a counting index, it can has a uuid and should be removed from the DB when finishes
         self.bootstrap_idx += 1
         print("spawn_container", flush=True)
         container = docker_utils.spawn_container(
             DOCKER_IMAGE_NAME,
             container_name=f"vault-bootstrap-{self.bootstrap_idx}",
             command=DOCKER_BOOTSTRAP_SERVER_COMMAND,
+            environment={"NAME": f"vault-bootstrap-{self.bootstrap_idx}"},
         )
         service_data = None
         if block:

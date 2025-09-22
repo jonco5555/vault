@@ -58,6 +58,9 @@ class Manager(ManagerServicer):
         )
         self._ca_cert = load_ca_cert(ca_cert_path)
         self._ip = ip
+        self._num_of_share_servers = num_of_share_servers
+        self._share_servers_data: List[types.ServiceData] = []
+        self._ready = False
 
         # grpc server
         creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
@@ -69,14 +72,13 @@ class Manager(ManagerServicer):
         self._db = DBManager(
             f"postgresql+asyncpg://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
         )
+
+        # Setup master
         self._setup_master_service: SetupMaster = SetupMaster(
             db=self._db,
             server_ip="[::]",
             server_port=SETUP_MASTER_SERVICE_PORT,
         )
-        self._num_of_share_servers = num_of_share_servers
-        self._share_servers_data: List[types.ServiceData] = []
-        self._ready = False
 
     async def start(self):
         await self._db.start()

@@ -25,14 +25,11 @@ async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
     for sig in signals:
         loop.add_signal_handler(sig, handler, sig)
 
-    print("Sleeping until a signal is received... (Ctrl+C to interrupt)")
     await stop_event.wait()
 
     # Cleanup handlers
     for sig in signals:
         loop.remove_signal_handler(sig)
-
-    print("Exiting gracefully.")
 
 
 async def main():
@@ -47,11 +44,11 @@ async def main():
         num_of_share_servers=MANAGER_NUM_SHARE_SERVERS,
     )
     await manager_server.start()
-    print("spawned and started, waiting for signal for termination...", flush=True)
-
+    manager_server._logger.info("Running until a signal is received")
     await wait_for_signal()
-
-    print("got termination signal, cleanup!...", flush=True)
+    manager_server._logger.info(
+        "Got a termination signal, cleaning up and exiting gracefully"
+    )
     await manager_server.stop()
 
 

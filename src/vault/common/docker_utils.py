@@ -18,6 +18,7 @@ def spawn_container(
     image_tag: str = "latest",
     container_name: Optional[str] = None,
     command: Optional[str] = None,
+    environment: Optional[dict[str, str]] = None,
 ):
     client = docker.from_env()
 
@@ -29,6 +30,7 @@ def spawn_container(
         detach=True,  # run in background
         volumes=VOLUMES,
         network=DOCKER_NETWORK_NAME,
+        environment=environment,
     )
 
     return container
