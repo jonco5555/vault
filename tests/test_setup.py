@@ -73,7 +73,7 @@ async def test_setup_public_api(db_manager: DBManager):
         server_ip=local_server_address,
     )
 
-    service_date, container = setup_master.spawn_bootstrap_service()
+    service_date, container = setup_master.spawn_bootstrap_server()
 
     # Wait for container to finish and get logs
     container.wait()

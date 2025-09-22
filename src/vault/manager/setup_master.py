@@ -1,7 +1,6 @@
 import asyncio
-import weakref
 from concurrent import futures
-from typing import List, Optional
+from typing import Optional
 
 import grpc
 from google.protobuf.empty_pb2 import Empty
@@ -11,7 +10,7 @@ from vault.common.constants import (
     DOCKER_BOOTSTRAP_SERVER_COMMAND,
     DOCKER_IMAGE_NAME,
     DOCKER_SHARE_SERVER_COMMAND,
-    SETUP_PORT,
+    SETUP_UNIT_SERVICE_PORT,
 )
 from vault.common.generated import setup_pb2, setup_pb2_grpc
 from vault.manager.db_manager import DBManager
@@ -21,7 +20,8 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
     def __init__(
         self,
         db: DBManager,
-        server_ip: str = "[::]",
+        server_ip: str,
+        server_port: int,
     ):
         setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
@@ -31,23 +31,24 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._is_setup_finished_lock = asyncio.Lock()
 
         self._server_ip = server_ip
-        self._running_server_task = asyncio.create_task(
-            self._start_setup_master_server(self._server_ip)
-        )
-        weakref.finalize(self, self.cleanup)
+        self._server_port = server_port
+        self._server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
+        setup_pb2_grpc.add_SetupMasterServicer_to_server(self, self._server)
+        self._server.add_insecure_port(f"{self._server_ip}:{self._server_port}")
 
         self.bootstrap_idx = 0
         self.share_server_idx = 0
+        self._ready = False
 
-    @classmethod
-    async def create(cls, db: DBManager, server_ip: str = "[::]"):
-        retval = cls(db=db, server_ip=server_ip)
-        await asyncio.sleep(0)  # start grpc server!
+    async def start(self):
+        await self._server.start()
+        self._ready = True
+        print("SetupMaster started!")
 
-        return retval
-
-    def cleanup(self):
-        self._running_server_task.cancel()
+    async def stop(self):
+        self._ready = False
+        await self._server.stop(grace=5.0)
+        print("SetupMaster stopped")
 
     # setup_pb2_grpc.SetupMaster inherited methods
     async def SetupRegister(self, request: setup_pb2.SetupRegisterRequest, context):
@@ -70,18 +71,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         return setup_pb2.SetupUnregisterResponse(is_unregistered=is_unregistered)
 
     # API methods
-    async def do_setup(self, share_servers_num: int):
-        for i in range(share_servers_num):
-            print(f"spawning shareServer {i}")
-            self._spawn_share_server()
-        async with self._is_setup_finished_lock:
-            self._is_setup_finished = True
-
-    async def is_setup_finished(self) -> bool:
-        async with self._is_setup_finished_lock:
-            return self._is_setup_finished
-
-    async def spawn_bootstrap_service(self, block: bool = True):
+    async def spawn_bootstrap_server(self, block: bool = True) -> types.ServiceData:
         self.bootstrap_idx += 1
         print("spawn_container", flush=True)
         container = docker_utils.spawn_container(
@@ -91,7 +81,23 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         )
         service_data = None
         if block:
-            print("waiting for registration", flush=True)
+            print("waiting for bootstrap registration", flush=True)
+            service_data: types.ServiceData = (
+                await self._wait_for_container_id_registration(container.short_id)
+            )
+        return service_data
+
+    async def spawn_share_server(self, block: bool = True) -> types.ServiceData:
+        self.share_server_idx += 1
+        container = docker_utils.spawn_container(
+            DOCKER_IMAGE_NAME,
+            container_name=f"vault-share-{self.share_server_idx}",
+            command=DOCKER_SHARE_SERVER_COMMAND,
+        )
+
+        service_data = None
+        if block:
+            print("waiting for share server registration", flush=True)
             service_data: types.ServiceData = (
                 await self._wait_for_container_id_registration(container.short_id)
             )
@@ -100,7 +106,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
     async def terminate_service(
         self, service_data: types.ServiceData, block: bool = True
     ):
-        _address = f"{service_data.ip_address}:{SETUP_PORT}"
+        _address = f"{service_data.ip_address}:{SETUP_UNIT_SERVICE_PORT}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())
@@ -109,40 +115,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             await docker_utils.wait_for_container_to_stop(service_data.container_id)
             docker_utils.remove_container(service_data.container_id)
 
-    async def get_all_share_servers(self) -> List[types.ServiceData]:
-        # TODO
-        pass
-
     # Private methods
-    async def _start_setup_master_server(self, server_ip: str = "[::]"):
-        try:
-            server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
-            setup_pb2_grpc.add_SetupMasterServicer_to_server(self, server)
-            server.add_insecure_port(f"{server_ip}:{SETUP_PORT}")
-            await server.start()
-            print(
-                f"SetupMaster started start_setup_master_server on port {SETUP_PORT}..."
-            )
-            await server.wait_for_termination()
-        except asyncio.CancelledError:
-            print("Stoppig setup master service...")
-            await server.stop(grace=10)  # grace period of 10 seconds
-
-    async def _spawn_share_service(self, block: bool = True):
-        self.share_server_idx += 1
-        container = docker_utils.spawn_container(
-            DOCKER_IMAGE_NAME,
-            container_name=f"vault-share-{self.bootstrap_idx}",
-            command=DOCKER_SHARE_SERVER_COMMAND,
-        )
-
-        service_data = None
-        if block:
-            service_data: types.ServiceData = (
-                await self._wait_for_container_id_registration(container.short_id)
-            )
-        return service_data
-
     async def _get_container_data(
         self, container_id: str
     ) -> Optional[types.ServiceData]:
