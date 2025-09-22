@@ -35,7 +35,6 @@ async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
 async def main():
     manager_server = Manager(
         port=MANAGER_SERVER_PORT,
-        ip="[::]",
         db_host=DB_DNS_ADDRESS,
         db_port=DB_PORT,
         db_username=DB_USERNAME,

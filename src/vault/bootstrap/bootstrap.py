@@ -19,6 +19,7 @@ logging.basicConfig(
 class Bootstrap(BootstrapServicer):
     def __init__(
         self,
+        name: str,
         port: int,
         ca_cert_path: str = "certs/ca.crt",
         ca_key_path: str = "certs/ca.key",
@@ -26,7 +27,7 @@ class Bootstrap(BootstrapServicer):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
         self._cert, self._ssl_privkey = generate_component_cert_and_key(
-            name="bootstrap", ca_cert_path=ca_cert_path, ca_key_path=ca_key_path
+            name=name, ca_cert_path=ca_cert_path, ca_key_path=ca_key_path
         )
 
         # grpc server

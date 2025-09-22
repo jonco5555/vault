@@ -10,7 +10,6 @@ from vault.common.constants import (
     DOCKER_BOOTSTRAP_SERVER_COMMAND,
     DOCKER_IMAGE_NAME,
     DOCKER_SHARE_SERVER_COMMAND,
-    SETUP_UNIT_SERVICE_PORT,
 )
 from vault.common.generated import setup_pb2, setup_pb2_grpc
 from vault.manager.db_manager import DBManager
@@ -19,9 +18,9 @@ from vault.manager.db_manager import DBManager
 class SetupMaster(setup_pb2_grpc.SetupMaster):
     def __init__(
         self,
+        port: int,
+        setup_unit_port: int,
         db: DBManager,
-        server_ip: str,
-        server_port: int,
     ):
         setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
@@ -30,11 +29,11 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._is_setup_finished = False
         self._is_setup_finished_lock = asyncio.Lock()
 
-        self._server_ip = server_ip
-        self._server_port = server_port
+        self._port = port
+        self._setup_unit_port = setup_unit_port
         self._server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
         setup_pb2_grpc.add_SetupMasterServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"{self._server_ip}:{self._server_port}")
+        self._server.add_insecure_port(f"[::]:{self._port}")
 
         self.bootstrap_idx = 0
         self.share_server_idx = 0
@@ -108,7 +107,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
     async def terminate_service(
         self, service_data: types.ServiceData, block: bool = True
     ):
-        _address = f"{service_data.ip_address}:{SETUP_UNIT_SERVICE_PORT}"
+        _address = f"{service_data.ip_address}:{self._setup_unit_port}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())

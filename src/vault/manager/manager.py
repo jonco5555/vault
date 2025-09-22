@@ -4,11 +4,6 @@ from typing import List
 import grpc
 
 from vault.common import types
-from vault.common.constants import (
-    BOOTSTRAP_SERVER_PORT,
-    SETUP_MASTER_SERVICE_PORT,
-    SHARE_SERVER_PORT,
-)
 from vault.common.generated.vault_pb2 import (
     DecryptRequest,
     DecryptResponse,
@@ -40,27 +35,32 @@ logging.basicConfig(
 class Manager(ManagerServicer):
     def __init__(
         self,
+        name: str,
         port: int,
-        ip: str,
         db_host: str,
         db_port: int,
         db_username: str,
         db_password: str,
         db_name: str,
         num_of_share_servers: int,
+        setup_master_port: int,
+        setup_unit_port: int,
+        bootstrap_port: int,
+        share_server_port: int,
         ca_cert_path: str = "certs/ca.crt",
         ca_key_path: str = "certs/ca.key",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
         self._cert, self._ssl_privkey = generate_component_cert_and_key(
-            name="manager", ca_cert_path=ca_cert_path, ca_key_path=ca_key_path
+            name=name, ca_cert_path=ca_cert_path, ca_key_path=ca_key_path
         )
         self._ca_cert = load_ca_cert(ca_cert_path)
-        self._ip = ip
         self._num_of_share_servers = num_of_share_servers
         self._share_servers_data: List[types.ServiceData] = []
         self._ready = False
+        self._bootstrap_port = bootstrap_port
+        self._share_server_port = share_server_port
 
         # grpc server
         creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
@@ -75,9 +75,9 @@ class Manager(ManagerServicer):
 
         # Setup master
         self._setup_master_service: SetupMaster = SetupMaster(
+            port=setup_master_port,
+            setup_unit_port=setup_unit_port,
             db=self._db,
-            server_ip="[::]",
-            server_port=SETUP_MASTER_SERVICE_PORT,
         )
 
     async def start(self):
@@ -122,9 +122,7 @@ class Manager(ManagerServicer):
         bootstrap_server_data = (
             await self._setup_master_service.spawn_bootstrap_server()
         )
-        bootstrap_address = (
-            f"{bootstrap_server_data.ip_address}:{BOOTSTRAP_SERVER_PORT}"
-        )
+        bootstrap_address = f"{bootstrap_server_data.ip_address}:{self._bootstrap_port}"
 
         # Sending generate shares request to bootstrap
         creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
@@ -151,7 +149,7 @@ class Manager(ManagerServicer):
             bootstrap_response.encrypted_shares, servers_addresses
         ):
             async with grpc.aio.secure_channel(
-                f"{server_address}:{SHARE_SERVER_PORT}", creds
+                f"{server_address}:{self._share_server_port}", creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 share_server_response: StoreShareResponse = await stub.StoreShare(
@@ -207,7 +205,7 @@ class Manager(ManagerServicer):
         creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         for server_address in servers_addresses:
             async with grpc.aio.secure_channel(
-                f"{server_address}:{SHARE_SERVER_PORT}", creds
+                f"{server_address}:{self._share_server_port}", creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 response: DecryptResponse = await stub.Decrypt(

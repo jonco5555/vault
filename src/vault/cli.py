@@ -1,22 +1,11 @@
 import asyncio
+import signal
 from typing import Annotated
 
 import typer
 
 from vault.bootstrap.bootstrap import Bootstrap
 from vault.common import types
-from vault.common.constants import (
-    BOOTSTRAP_SERVER_PORT,
-    DB_DNS_ADDRESS,
-    DB_NAME,
-    DB_PASSWORD,
-    DB_PORT,
-    DB_USERNAME,
-    MANAGER_NUM_SHARE_SERVERS,
-    MANAGER_SERVER_DNS_ADDRESS,
-    MANAGER_SERVER_PORT,
-    SHARE_SERVER_PORT,
-)
 from vault.common.setup_unit import SetupUnit
 from vault.manager.manager import Manager
 from vault.share_server.share_server import ShareServer
@@ -25,36 +14,7 @@ from vault.user.user import User
 app = typer.Typer()
 
 
-@app.command()
-async def manager(
-    port: Annotated[
-        int, typer.Option(envvar="MANAGER_SERVER_PORT")
-    ] = MANAGER_SERVER_PORT,
-    ip: Annotated[str, typer.Option(envvar="MANAGER_SERVER_IP")] = "[::]",
-    db_host: Annotated[str, typer.Option(envvar="DB_DNS_ADDRESS")] = DB_DNS_ADDRESS,
-    db_port: Annotated[int, typer.Option(envvar="DB_PORT")] = DB_PORT,
-    db_username: Annotated[str, typer.Option(envvar="DB_USERNAME")] = DB_USERNAME,
-    db_password: Annotated[str, typer.Option(envvar="DB_PASSWORD")] = DB_PASSWORD,
-    db_name: Annotated[str, typer.Option(envvar="DB_NAME")] = DB_NAME,
-    num_of_share_servers: Annotated[
-        int, typer.Option(envvar="MANAGER_NUM_SHARE_SERVERS")
-    ] = MANAGER_NUM_SHARE_SERVERS,
-):
-    """Run the Manager service."""
-    manager_server = Manager(
-        port=port,
-        ip=ip,
-        db_host=db_host,
-        db_port=db_port,
-        db_username=db_username,
-        db_password=db_password,
-        db_name=db_name,
-        num_of_share_servers=num_of_share_servers,
-    )
-    await manager_server.start()
-    manager_server._logger.info("Running until a signal is received")
-    import signal
-
+async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
 
@@ -62,26 +22,68 @@ async def manager(
         print(f"Received signal: {sig!s}")
         stop_event.set()
 
-    for sig in (signal.SIGINT, signal.SIGTERM):
+    # Register signal handlers
+    for sig in signals:
         loop.add_signal_handler(sig, handler, sig)
+
+    typer.echo("Running until a signal is received")
     await stop_event.wait()
-    for sig in (signal.SIGINT, signal.SIGTERM):
+    typer.echo("Got a termination signal, cleaning up and exiting gracefully")
+
+    # Cleanup handlers
+    for sig in signals:
         loop.remove_signal_handler(sig)
-    manager_server._logger.info(
-        "Got a termination signal, cleaning up and exiting gracefully"
+
+
+@app.command()
+async def manager(
+    name: Annotated[str, typer.Option(envvar="NAME")],
+    port: Annotated[int, typer.Option(envvar="PORT")],
+    db_host: Annotated[str, typer.Option(envvar="DB_HOST")],
+    db_port: Annotated[int, typer.Option(envvar="DB_PORT")],
+    db_username: Annotated[str, typer.Option(envvar="DB_USERNAME")],
+    db_password: Annotated[str, typer.Option(envvar="DB_PASSWORD")],
+    db_name: Annotated[str, typer.Option(envvar="DB_NAME")],
+    num_of_share_servers: Annotated[int, typer.Option(envvar="NUM_SHARE_SERVERS")],
+    setup_master_port: Annotated[int, typer.Option(envvar="SETUP_MASTER_PORT")],
+    setup_unit_port: Annotated[int, typer.Option(envvar="SETUP_UNIT_PORT")],
+    bootstrap_port: Annotated[int, typer.Option(envvar="BOOTSTRAP_PORT")],
+    share_server_port: Annotated[int, typer.Option(envvar="SHARE_SERVER_PORT")],
+):
+    manager_server = Manager(
+        name=name,
+        port=port,
+        db_host=db_host,
+        db_port=db_port,
+        db_username=db_username,
+        db_password=db_password,
+        db_name=db_name,
+        num_of_share_servers=num_of_share_servers,
+        setup_master_port=setup_master_port,
+        setup_unit_port=setup_unit_port,
+        bootstrap_port=bootstrap_port,
+        share_server_port=share_server_port,
     )
+    await manager_server.start()
+    await wait_for_signal()
     await manager_server.stop()
 
 
 @app.command()
 async def bootstrap(
-    port: Annotated[
-        int, typer.Option(envvar="BOOTSTRAP_SERVER_PORT")
-    ] = BOOTSTRAP_SERVER_PORT,
+    name: Annotated[str, typer.Option(envvar="NAME")],
+    port: Annotated[int, typer.Option(envvar="PORT")],
+    setup_unit_port: Annotated[int, typer.Option(envvar="SETUP_UNIT_PORT")],
+    setup_master_address: Annotated[str, typer.Option(envvar="SETUP_MASTER_ADDRESS")],
+    setup_master_port: Annotated[int, typer.Option(envvar="SETUP_MASTER_PORT")],
 ):
-    """Run the Bootstrap service."""
-    setup_unit = SetupUnit(types.ServiceType.BOOSTRAP_SERVER)
-    bootstrap_server = Bootstrap(port=port)
+    setup_unit = SetupUnit(
+        port=setup_unit_port,
+        service_type=types.ServiceType.BOOSTRAP_SERVER,
+        setup_master_address=setup_master_address,
+        setup_master_port=setup_master_port,
+    )
+    bootstrap_server = Bootstrap(name=name, port=port)
     await bootstrap_server.start()
     await setup_unit.init_and_wait_for_shutdown()
     await bootstrap_server.close()
@@ -89,12 +91,20 @@ async def bootstrap(
 
 
 @app.command()
-async def shareserver(
-    port: Annotated[int, typer.Option(envvar="SHARE_SERVER_PORT")] = SHARE_SERVER_PORT,
+async def share_server(
+    name: Annotated[str, typer.Option(envvar="NAME")],
+    port: Annotated[int, typer.Option(envvar="PORT")],
+    setup_unit_port: Annotated[int, typer.Option(envvar="SETUP_UNIT_PORT")],
+    setup_master_address: Annotated[str, typer.Option(envvar="SETUP_MASTER_ADDRESS")],
+    setup_master_port: Annotated[int, typer.Option(envvar="SETUP_MASTER_PORT")],
 ):
-    """Run the ShareServer service."""
-    setup_unit = SetupUnit(types.ServiceType.SHARE_SERVER)
-    share_server = ShareServer(port=port)
+    setup_unit = SetupUnit(
+        port=setup_unit_port,
+        service_type=types.ServiceType.SHARE_SERVER,
+        setup_master_address=setup_master_address,
+        setup_master_port=setup_master_port,
+    )
+    share_server = ShareServer(name=name, port=port)
     await share_server.start()
     await setup_unit.init_and_wait_for_shutdown(share_server._pubkey_b64)
     await share_server.close()
@@ -103,21 +113,12 @@ async def shareserver(
 
 @app.command()
 async def user(
-    user_id: Annotated[str, typer.Option(envvar="USER_ID")] = "alice",
-    server_ip: Annotated[
-        str, typer.Option(envvar="MANAGER_SERVER_DNS_ADDRESS")
-    ] = MANAGER_SERVER_DNS_ADDRESS,
-    server_port: Annotated[
-        int, typer.Option(envvar="MANAGER_SERVER_PORT")
-    ] = MANAGER_SERVER_PORT,
-    threshold: Annotated[
-        int, typer.Option(envvar="USER_THRESHOLD")
-    ] = MANAGER_NUM_SHARE_SERVERS + 1,
-    num_of_total_shares: Annotated[
-        int, typer.Option(envvar="USER_NUM_TOTAL_SHARES")
-    ] = MANAGER_NUM_SHARE_SERVERS + 1,
+    user_id: Annotated[str, typer.Option(envvar="USER_ID")],
+    server_ip: Annotated[str, typer.Option(envvar="SERVER_IP")],
+    server_port: Annotated[int, typer.Option(envvar="SERVER_PORT")],
+    threshold: Annotated[int, typer.Option(envvar="THRESHOLD")],
+    num_of_total_shares: Annotated[int, typer.Option(envvar="TOTAL_SHARES")],
 ):
-    """Simulate User client operations."""
     user_obj = User(
         user_id=user_id,
         server_ip=server_ip,

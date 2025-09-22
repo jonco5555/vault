@@ -24,16 +24,15 @@ logging.basicConfig(
 class ShareServer(ShareServerServicer):
     def __init__(
         self,
+        name: str,
         port: int,
-        id: int,
         ca_cert_path: str = "certs/ca.crt",
         ca_key_path: str = "certs/ca.key",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
-        self._id = id
         self._cert, self._ssl_privkey = generate_component_cert_and_key(
-            name=f"share_server_{id}",
+            name=name,
             ca_cert_path=ca_cert_path,
             ca_key_path=ca_key_path,
         )
