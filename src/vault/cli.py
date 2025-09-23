@@ -48,6 +48,7 @@ async def manager(
     setup_unit_port: Annotated[int, typer.Option(envvar="SETUP_UNIT_PORT")],
     bootstrap_port: Annotated[int, typer.Option(envvar="BOOTSTRAP_PORT")],
     share_server_port: Annotated[int, typer.Option(envvar="SHARE_SERVER_PORT")],
+    docker_image: Annotated[str, typer.Option(envvar="DOCKER_IMAGE")],
 ):
     name = docker_utils.get_container_name(docker_utils.get_self_container_id())
     manager_server = Manager(
@@ -63,6 +64,7 @@ async def manager(
         setup_unit_port=setup_unit_port,
         bootstrap_port=bootstrap_port,
         share_server_port=share_server_port,
+        docker_image=docker_image,
     )
     await manager_server.start()
     await wait_for_signal()

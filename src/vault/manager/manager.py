@@ -47,13 +47,16 @@ class Manager(ManagerServicer):
         setup_unit_port: int,
         bootstrap_port: int,
         share_server_port: int,
+        docker_image: str,
         ca_cert_path: str = "certs/ca.crt",
         ca_key_path: str = "certs/ca.key",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
         self._cert, self._ssl_privkey = generate_component_cert_and_key(
-            name=name, ca_cert_path=ca_cert_path, ca_key_path=ca_key_path
+            name=name,
+            ca_cert_path=ca_cert_path,
+            ca_key_path=ca_key_path,
         )
         self._ca_cert = load_ca_cert(ca_cert_path)
         self._num_of_share_servers = num_of_share_servers
@@ -78,6 +81,7 @@ class Manager(ManagerServicer):
             port=setup_master_port,
             setup_unit_port=setup_unit_port,
             db=self._db,
+            docker_image=docker_image,
         )
 
     async def start(self):
@@ -122,7 +126,9 @@ class Manager(ManagerServicer):
         bootstrap_server_data = (
             await self._setup_master_service.spawn_bootstrap_server()
         )
-        bootstrap_address = f"{bootstrap_server_data.ip_address}:{self._bootstrap_port}"
+        bootstrap_address = (
+            f"{bootstrap_server_data.container_name}:{self._bootstrap_port}"
+        )
 
         # Sending generate shares request to bootstrap
         creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
