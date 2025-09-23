@@ -79,13 +79,15 @@ def share_server(
 ):
     from vault.share_server.__main__ import main
 
-    asyncio.run(main())(
-        port=port,
-        setup_unit_port=setup_unit_port,
-        setup_master_address=setup_master_address,
-        setup_master_port=setup_master_port,
-        ca_cert_path=ca_cert_path,
-        ca_key_path=ca_key_path,
+    asyncio.run(
+        main(
+            port=port,
+            setup_unit_port=setup_unit_port,
+            setup_master_address=setup_master_address,
+            setup_master_port=setup_master_port,
+            ca_cert_path=ca_cert_path,
+            ca_key_path=ca_key_path,
+        )
     )
 
 
