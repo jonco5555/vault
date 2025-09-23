@@ -65,7 +65,7 @@ async def test_add_and_get_server(db_manager: DBManager):
     reg_req = types.ServiceData(
         type=_type,
         container_id=_container_id,
-        ip_address=_ip_address,
+        container_name=_ip_address,
         public_key=_public_key,
     )
 
@@ -77,7 +77,7 @@ async def test_add_and_get_server(db_manager: DBManager):
     assert result is not None
     assert result.container_id == _container_id
     assert result.type == _type
-    assert result.ip_address == _ip_address
+    assert result.container_name == _ip_address
     assert result.public_key == _public_key
 
     try:

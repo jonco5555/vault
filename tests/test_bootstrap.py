@@ -29,7 +29,7 @@ def key_pairs(request) -> tuple[list[bytes], list[bytes]]:
 @pytest.fixture
 def bootstrap_server() -> _Server:
     servicers = {
-        DESCRIPTOR.services_by_name["Bootstrap"]: Bootstrap(0),
+        DESCRIPTOR.services_by_name["Bootstrap"]: Bootstrap("bootstrap", 0),
     }
     return grpc_testing.server_from_dictionary(
         servicers, grpc_testing.strict_real_time()
@@ -97,7 +97,7 @@ async def test_generate_shares_raises_exception_invalid_key(
 
 @pytest_asyncio.fixture
 async def bootstrap_stub():
-    bootstrap = Bootstrap(0)
+    bootstrap = Bootstrap("bootstrap", 0)
     await bootstrap.start()
     creds = grpc.ssl_channel_credentials(root_certificates=bootstrap._cert)
     async with grpc.aio.secure_channel(

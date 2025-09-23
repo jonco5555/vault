@@ -27,7 +27,7 @@ def share():
 
 @pytest_asyncio.fixture
 async def server():
-    return ShareServer(0, id=1)
+    return ShareServer("share", 0)
 
 
 @pytest.fixture
