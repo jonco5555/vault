@@ -62,7 +62,7 @@ def generate_component_cert_and_key(
     with open(ca_key_path, "rb") as f:
         ca_key = serialization.load_pem_private_key(f.read(), password=None)
 
-    server_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    server_key = rsa.generate_private_key(public_exponent=65537, key_size=4096)
 
     server_name = x509.Name(
         [
