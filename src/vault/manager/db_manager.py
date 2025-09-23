@@ -115,7 +115,7 @@ class DBManager:
             entry = Server(
                 container_id=register_request.container_id,
                 type=register_request.type,
-                ip_address=register_request.ip_address,
+                ip_address=register_request.container_name,
                 public_key=register_request.public_key,
             )
             session.add(entry)
@@ -140,7 +140,7 @@ class DBManager:
                 retval = ServiceData(
                     container_id=result.container_id,
                     type=result.type,
-                    ip_address=result.ip_address,
+                    container_name=result.ip_address,
                     public_key=result.public_key,
                 )
 

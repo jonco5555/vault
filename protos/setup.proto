@@ -18,7 +18,7 @@ enum ServiceType {
 message SetupRegisterRequest {
     ServiceType type = 1;
     string container_id = 2;
-    string ip_address = 3;
+    string container_name = 3;
     bytes public_key = 4;
 }
 

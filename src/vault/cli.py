@@ -5,7 +5,7 @@ from typing import Annotated
 import typer
 
 from vault.bootstrap.bootstrap import Bootstrap
-from vault.common import types
+from vault.common import docker_utils, types
 from vault.common.setup_unit import SetupUnit
 from vault.manager.manager import Manager
 from vault.share_server.share_server import ShareServer
@@ -37,7 +37,6 @@ async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
 
 @app.command()
 async def manager(
-    name: Annotated[str, typer.Option(envvar="NAME")],
     port: Annotated[int, typer.Option(envvar="PORT")],
     db_host: Annotated[str, typer.Option(envvar="DB_HOST")],
     db_port: Annotated[int, typer.Option(envvar="DB_PORT")],
@@ -50,6 +49,7 @@ async def manager(
     bootstrap_port: Annotated[int, typer.Option(envvar="BOOTSTRAP_PORT")],
     share_server_port: Annotated[int, typer.Option(envvar="SHARE_SERVER_PORT")],
 ):
+    name = docker_utils.get_container_name(docker_utils.get_self_container_id())
     manager_server = Manager(
         name=name,
         port=port,
@@ -71,7 +71,6 @@ async def manager(
 
 @app.command()
 async def bootstrap(
-    name: Annotated[str, typer.Option(envvar="NAME")],
     port: Annotated[int, typer.Option(envvar="PORT")],
     setup_unit_port: Annotated[int, typer.Option(envvar="SETUP_UNIT_PORT")],
     setup_master_address: Annotated[str, typer.Option(envvar="SETUP_MASTER_ADDRESS")],
@@ -83,6 +82,7 @@ async def bootstrap(
         setup_master_address=setup_master_address,
         setup_master_port=setup_master_port,
     )
+    name = docker_utils.get_container_name(docker_utils.get_self_container_id())
     bootstrap_server = Bootstrap(name=name, port=port)
     await bootstrap_server.start()
     await setup_unit.init_and_wait_for_shutdown()
@@ -92,7 +92,6 @@ async def bootstrap(
 
 @app.command()
 async def share_server(
-    name: Annotated[str, typer.Option(envvar="NAME")],
     port: Annotated[int, typer.Option(envvar="PORT")],
     setup_unit_port: Annotated[int, typer.Option(envvar="SETUP_UNIT_PORT")],
     setup_master_address: Annotated[str, typer.Option(envvar="SETUP_MASTER_ADDRESS")],
@@ -104,6 +103,7 @@ async def share_server(
         setup_master_address=setup_master_address,
         setup_master_port=setup_master_port,
     )
+    name = docker_utils.get_container_name(docker_utils.get_self_container_id())
     share_server = ShareServer(name=name, port=port)
     await share_server.start()
     await setup_unit.init_and_wait_for_shutdown(share_server._pubkey_b64)

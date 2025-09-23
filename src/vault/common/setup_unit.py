@@ -48,9 +48,7 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         service_data = types.ServiceData(
             type=self._service_type,
             container_id=self_container_id,
-            ip_address=docker_utils.get_container_name(
-                self_container_id
-            ),  # TODO: add ip as well
+            container_name=docker_utils.get_container_name(self_container_id),
             public_key=pub_key,
         )
         await self._register(service_data)
