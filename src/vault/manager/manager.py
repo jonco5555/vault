@@ -53,6 +53,7 @@ class Manager(ManagerServicer):
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._port = port
+        self._name = name
         self._cert, self._ssl_privkey = generate_component_cert_and_key(
             name=name,
             ca_cert_path=ca_cert_path,
@@ -62,8 +63,11 @@ class Manager(ManagerServicer):
         self._num_of_share_servers = num_of_share_servers
         self._share_servers_data: List[types.ServiceData] = []
         self._ready = False
+        self._setup_master_port = setup_master_port
+        self._setup_unit_port = setup_unit_port
         self._bootstrap_port = bootstrap_port
         self._share_server_port = share_server_port
+        self._docker_image = docker_image
 
         # grpc server
         creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
@@ -123,8 +127,13 @@ class Manager(ManagerServicer):
         public_keys.append(request.user_public_key)
 
         # Create bootstrap
-        bootstrap_server_data = (
-            await self._setup_master_service.spawn_bootstrap_server()
+        bootstrap_server_data = await self._setup_master_service.spawn_bootstrap_server(
+            environment={
+                "PORT": self._bootstrap_port,
+                "SETUP_UNIT_PORT": self._setup_unit_port,
+                "SETUP_MASTER_ADDRESS": self._name,
+                "SETUP_MASTER_PORT": self._setup_master_port,
+            }
         )
         bootstrap_address = (
             f"{bootstrap_server_data.container_name}:{self._bootstrap_port}"
@@ -223,10 +232,18 @@ class Manager(ManagerServicer):
         )
 
     async def launch_all_share_servers(self):
+        environment = {
+            "PORT": self._share_server_port,
+            "SETUP_UNIT_PORT": self._setup_unit_port,
+            "SETUP_MASTER_ADDRESS": self._name,
+            "SETUP_MASTER_PORT": self._setup_master_port,
+        }
         for i in range(self._num_of_share_servers):
             self._logger.debug(f"creating share server number {i}")
             self._share_servers_data.append(
-                await self._setup_master_service.spawn_share_server()
+                await self._setup_master_service.spawn_share_server(
+                    environment=environment
+                )
             )
 
         # TODO: make paralel and by not blocking on each share server and sample the db.

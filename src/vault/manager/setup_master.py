@@ -68,7 +68,10 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         return setup_pb2.SetupUnregisterResponse(is_unregistered=is_unregistered)
 
     # API methods
-    async def spawn_bootstrap_server(self, block: bool = True) -> types.ServiceData:
+    # TODO: combine spawn_bootstrap_server and spawn_share_server into spawn_service and get parameters from manager
+    async def spawn_bootstrap_server(
+        self, block: bool = True, environment: dict = {}
+    ) -> types.ServiceData:
         # TODO: Bootstrap does not need a counting index, it can has a uuid and should be removed from the DB when finishes
         self.bootstrap_idx += 1
         print("spawn_container", flush=True)
@@ -77,6 +80,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             container_name=f"vault-bootstrap-{self.bootstrap_idx}",
             command="vault bootstrap",
             network="vault-net",
+            environment=environment,
         )
         service_data = None
         if block:
@@ -86,13 +90,16 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             )
         return service_data
 
-    async def spawn_share_server(self, block: bool = True) -> types.ServiceData:
+    async def spawn_share_server(
+        self, block: bool = True, environment: dict = {}
+    ) -> types.ServiceData:
         self.share_server_idx += 1
         container = docker_utils.spawn_container(
             self._docker_image,
             container_name=f"vault-share-{self.share_server_idx}",
             command="vault share_server",
             network="vault-net",
+            environment=environment,
         )
 
         service_data = None

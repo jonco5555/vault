@@ -19,7 +19,7 @@ async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
     stop_event = asyncio.Event()
 
     def handler(sig):
-        print(f"Received signal: {sig!s}")
+        typer.echo(f"Received signal: {sig!s}")
         stop_event.set()
 
     # Register signal handlers
