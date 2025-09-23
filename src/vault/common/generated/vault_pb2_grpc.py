@@ -39,15 +39,10 @@ class ManagerStub(object):
                 request_serializer=vault__pb2.RegisterRequest.SerializeToString,
                 response_deserializer=vault__pb2.RegisterResponse.FromString,
                 _registered_method=True)
-        self.StoreSecret = channel.unary_unary(
-                '/vault.Manager/StoreSecret',
-                request_serializer=vault__pb2.StoreSecretRequest.SerializeToString,
-                response_deserializer=vault__pb2.StoreSecretResponse.FromString,
-                _registered_method=True)
-        self.RetrieveSecret = channel.unary_unary(
-                '/vault.Manager/RetrieveSecret',
-                request_serializer=vault__pb2.RetrieveSecretRequest.SerializeToString,
-                response_deserializer=vault__pb2.RetrieveSecretResponse.FromString,
+        self.SecureCall = channel.stream_stream(
+                '/vault.Manager/SecureCall',
+                request_serializer=vault__pb2.SecureReqMsgWrapper.SerializeToString,
+                response_deserializer=vault__pb2.SecureRespMsgWrapper.FromString,
                 _registered_method=True)
 
 
@@ -55,19 +50,15 @@ class ManagerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def Register(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Register username over SRP protocol and store end-2-end encryption key.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def StoreSecret(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def RetrieveSecret(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+    def SecureCall(self, request_iterator, context):
+        """Single bidirectional stream: SRP login handshake + authenticated application request/response
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -80,15 +71,10 @@ def add_ManagerServicer_to_server(servicer, server):
                     request_deserializer=vault__pb2.RegisterRequest.FromString,
                     response_serializer=vault__pb2.RegisterResponse.SerializeToString,
             ),
-            'StoreSecret': grpc.unary_unary_rpc_method_handler(
-                    servicer.StoreSecret,
-                    request_deserializer=vault__pb2.StoreSecretRequest.FromString,
-                    response_serializer=vault__pb2.StoreSecretResponse.SerializeToString,
-            ),
-            'RetrieveSecret': grpc.unary_unary_rpc_method_handler(
-                    servicer.RetrieveSecret,
-                    request_deserializer=vault__pb2.RetrieveSecretRequest.FromString,
-                    response_serializer=vault__pb2.RetrieveSecretResponse.SerializeToString,
+            'SecureCall': grpc.stream_stream_rpc_method_handler(
+                    servicer.SecureCall,
+                    request_deserializer=vault__pb2.SecureReqMsgWrapper.FromString,
+                    response_serializer=vault__pb2.SecureRespMsgWrapper.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -129,7 +115,7 @@ class Manager(object):
             _registered_method=True)
 
     @staticmethod
-    def StoreSecret(request,
+    def SecureCall(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -139,39 +125,12 @@ class Manager(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
+        return grpc.experimental.stream_stream(
+            request_iterator,
             target,
-            '/vault.Manager/StoreSecret',
-            vault__pb2.StoreSecretRequest.SerializeToString,
-            vault__pb2.StoreSecretResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def RetrieveSecret(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/vault.Manager/RetrieveSecret',
-            vault__pb2.RetrieveSecretRequest.SerializeToString,
-            vault__pb2.RetrieveSecretResponse.FromString,
+            '/vault.Manager/SecureCall',
+            vault__pb2.SecureReqMsgWrapper.SerializeToString,
+            vault__pb2.SecureRespMsgWrapper.FromString,
             options,
             channel_credentials,
             insecure,

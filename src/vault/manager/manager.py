@@ -10,12 +10,21 @@ from vault.common.generated.vault_pb2 import (
     GenerateSharesRequest,
     GenerateSharesResponse,
     PartialDecrypted,
+    RegisterRequest,
     RegisterResponse,
     RetrieveSecretResponse,
+    RetrieveSecretRequest,
     Secret,
+    StoreSecretRequest,
     StoreSecretResponse,
     StoreShareRequest,
     StoreShareResponse,
+    SecureReqMsgWrapper,
+    SecureRespMsgWrapper,
+    SRPSecondStep,
+    SRPThirdStepAck,
+    InnerRequest,
+    InnerResponse,
 )
 from vault.common.generated.vault_pb2_grpc import (
     BootstrapStub,
@@ -26,6 +35,11 @@ from vault.common.generated.vault_pb2_grpc import (
 from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
 from vault.manager.db_manager import DBManager
 from vault.manager.setup_master import SetupMaster
+from vault.crypto.authentication import (
+    srp_authentication_server_step_one,
+    srp_authentication_server_step_three,
+)
+
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -115,20 +129,137 @@ class Manager(ManagerServicer):
         await self._db.close()
         self._logger.info("Server stopped")
 
-    async def Register(self, request, context):
+    async def Register(self, request: RegisterRequest, context) -> RegisterResponse:
+        self._logger.info("Register request for %s", request.user_id)
+        try:
+            await self._db.add_auth_client(
+                username=request.user_id, verifier=request.verifier, salt=request.salt
+            )
+        except Exception as e:
+            await context.abort(
+                grpc.StatusCode.INTERNAL, f"SRP registration failed {e}"
+            )
+            return
+
+        try:
+            return await self._register(request)
+        except RuntimeError as e:
+            await context.abort(
+                grpc.StatusCode.UNKNOWN, f"_vault_register had error: {e}"
+            )
+            return
+
+    async def SecureCall(self, request_iterator, context):
+        """
+        Bidirectional stream handling:
+        """
+        req_iter = request_iterator.__aiter__()
+
+        try:
+            auth_step_1_msg: SecureReqMsgWrapper = await req_iter.__anext__()
+        except StopAsyncIteration:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "no messages")
+            return
+
+        if not auth_step_1_msg or not auth_step_1_msg.HasField("auth_step_1"):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT, "expected auth_step_1"
+            )
+            return
+
+        username: str = auth_step_1_msg.auth_step_1.username
+        password_verifier: str = await self._db.get_auth_client_verifier(username)
+        salt: str = await self._db.get_auth_client_salt(username)
+
+        server_public, server_private = srp_authentication_server_step_one(
+            username=username,
+            password_verifier=password_verifier,
+        )
+        yield SecureRespMsgWrapper(
+            auth_step_2=SRPSecondStep(
+                server_public_key=server_public,
+                salt=salt,
+            )
+        )
+
+        try:
+            auth_step_3_msg: SecureReqMsgWrapper = await req_iter.__anext__()
+        except StopAsyncIteration:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "no auth_step_3")
+            return
+
+        if not auth_step_3_msg or not auth_step_3_msg.HasField("auth_step_3"):
+            await context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT, "expected auth_step_3"
+            )
+            return
+
+        client_public: str = auth_step_3_msg.auth_step_3.client_public_key
+        client_session_key_proof: str = (
+            auth_step_3_msg.auth_step_3.client_session_key_proof
+        )
+
+        _ = srp_authentication_server_step_three(
+            username=username,
+            password_verifier=password_verifier,
+            salt=salt,
+            server_private=server_private,
+            client_public=client_public,
+            client_session_key_proof=client_session_key_proof,
+        )
+
+        yield SecureRespMsgWrapper(
+            auth_step_3_ack=SRPThirdStepAck(
+                ok=True,
+            )
+        )
+
+        try:
+            app_request_msg: SecureReqMsgWrapper = await req_iter.__anext__()
+        except StopAsyncIteration:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected app_req")
+            return
+
+        if not app_request_msg or not app_request_msg.HasField("app_req"):
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "expected app_req")
+            return
+
+        app_req: InnerRequest = app_request_msg.app_req
+        try:
+            app_resp: InnerResponse = await self._handle_user_inner_request(app_req)
+        except RuntimeError as e:
+            await context.abort(
+                grpc.StatusCode.UNKNOWN, f"_handle_user_inner_request had error: {e}"
+            )
+            return
+
+        # Must yield here - otherwise python is mad.
+        yield SecureRespMsgWrapper(app_resp=app_resp)
+
+    async def _handle_user_inner_request(
+        self, inner_request: InnerRequest
+    ) -> InnerResponse:
+        if inner_request.HasField("store"):
+            return InnerResponse(store=await self.store_secret(inner_request.store))
+        elif inner_request.HasField("retrieve"):
+            return InnerResponse(
+                retrieve=await self.retrieve_secret(inner_request.retrieve)
+            )
+        else:
+            raise RuntimeError("unknown InnerRequest body type")
+
+    async def _register(self, request: RegisterRequest) -> RegisterResponse:
         self._logger.info(f"Received registration request from user {request.user_id}")
-        if not self._validate_server_ready(
-            context
-        ) or not await self._validate_user_not_exists(request.user_id, context):
-            return RegisterResponse()
+
+        self._validate_server_ready()
+        await self._validate_user_not_exists(request.user_id)
 
         # Add user to DB
         await self._db.add_user(request.user_id, request.user_public_key)
 
         # Get public keys of share servers
         public_keys = await self._db.get_servers_keys()
-        if not self._validate_num_of_servers_in_db(len(public_keys), context):
-            return RegisterResponse()
+        self._validate_num_of_servers_in_db(len(public_keys))
 
         # Add user's public key to the end of the list, where the bootstrap expects it
         public_keys.append(request.user_public_key)
@@ -189,14 +320,12 @@ class Manager(ManagerServicer):
             encrypted_share=user_share, encrypted_key=bootstrap_response.encrypted_key
         )
 
-    async def StoreSecret(self, request, context):
+    async def store_secret(self, request: StoreSecretRequest) -> StoreSecretResponse:
         self._logger.info(
             f"Storing secret {request.secret_id} for user {request.user_id}"
         )
-        if not self._validate_server_ready(
-            context
-        ) or not await self._validate_user_exists(request.user_id, context):
-            return StoreSecretResponse(success=False)
+        self._validate_server_ready()
+        await self._validate_user_exists(request.user_id)
 
         # TODO: make sure .proto Secret is saved correctly in the DB
         await self._db.add_secret(
@@ -204,22 +333,20 @@ class Manager(ManagerServicer):
         )
         return StoreSecretResponse(success=True)
 
-    async def RetrieveSecret(self, request, context):
+    async def retrieve_secret(
+        self, request: RetrieveSecretRequest
+    ) -> RetrieveSecretResponse:
         self._logger.info(
             f"Retrieving secret {request.secret_id} for user {request.user_id}"
         )
 
-        if not self._validate_server_ready(
-            context
-        ) or not await self._validate_user_exists(request.user_id, context):
-            return StoreSecretResponse()
+        self._validate_server_ready()
+        await self._validate_user_exists(request.user_id)
 
         # Get secret from DB
         bytes_secret = await self._db.get_secret(request.user_id, request.secret_id)
         if not bytes_secret:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details("Secret not found")
-            return StoreSecretResponse()
+            raise RuntimeError("Secret not found")
         secret = Secret()
         secret.ParseFromString(bytes_secret)
 
@@ -268,36 +395,20 @@ class Manager(ManagerServicer):
         # TODO: make paralel and by not blocking on each share server and sample the db.
 
     # private methdods
-    def _validate_server_ready(self, context):
+    def _validate_server_ready(self):
         if not self._ready:
-            self._logger.debug("Server is not ready to accept requests")
-            context.set_code(grpc.StatusCode.UNAVAILABLE)
-            context.set_details("Server is not ready")
-            return False
-        return True
+            raise RuntimeError("Server is not ready to accept requests")
 
-    async def _validate_user_exists(self, user_id, context):
-        if not await self._db.user_exists(user_id):
-            self._logger.debug(f"User {user_id} does not exist")
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details("User does not exist")
-            return False
-        return True
-
-    async def _validate_user_not_exists(self, user_id, context):
+    async def _validate_user_not_exists(self, user_id):
         if await self._db.user_exists(user_id):
-            self._logger.debug(f"User {user_id} already exists")
-            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
-            context.set_details("User already exists")
-            return False
-        return True
+            raise RuntimeError(f"User {user_id} already exists")
 
-    def _validate_num_of_servers_in_db(self, num_in_db: int, context):
+    async def _validate_user_exists(self, user_id):
+        if not await self._db.user_exists(user_id):
+            raise RuntimeError(f"User {user_id} does not exists")
+
+    def _validate_num_of_servers_in_db(self, num_in_db: int):
         if num_in_db != self._num_of_share_servers:
-            self._logger.debug(
+            raise RuntimeError(
                 f"Not enough share servers registered. Required: {self._num_of_share_servers}, Available: {num_in_db}"
             )
-            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
-            context.set_details("Not enough share servers registered")
-            return False
-        return True
