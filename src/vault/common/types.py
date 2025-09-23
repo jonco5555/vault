@@ -13,7 +13,7 @@ class ServiceType(int, Enum):
 class ServiceData(BaseModel):
     type: ServiceType
     container_id: str
-    ip_address: str
+    container_name: str
     public_key: bytes
 
 
@@ -23,7 +23,7 @@ def ServiceData_to_SetupRegisterRequest(
     return setup_pb2.SetupRegisterRequest(
         type=service_data.type,
         container_id=service_data.container_id,
-        ip_address=service_data.ip_address,
+        container_name=service_data.container_name,
         public_key=service_data.public_key,
     )
 
@@ -34,7 +34,7 @@ def SetupRegisterRequest_to_ServiceData(
     return ServiceData(
         type=register_request.type,
         container_id=register_request.container_id,
-        ip_address=register_request.ip_address,
+        container_name=register_request.container_name,
         public_key=register_request.public_key,
     )
 

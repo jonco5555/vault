@@ -4,12 +4,9 @@ from typing import List
 import grpc
 
 from vault.common import types
-from vault.common.constants import (
-    BOOTSTRAP_SERVER_PORT,
-    SETUP_MASTER_SERVICE_PORT,
-    SHARE_SERVER_PORT,
-)
 from vault.common.generated.vault_pb2 import (
+    DecryptRequest,
+    DecryptResponse,
     GenerateSharesRequest,
     GenerateSharesResponse,
     PartialDecrypted,
@@ -19,8 +16,6 @@ from vault.common.generated.vault_pb2 import (
     StoreSecretResponse,
     StoreShareRequest,
     StoreShareResponse,
-    DecryptRequest,
-    DecryptResponse,
 )
 from vault.common.generated.vault_pb2_grpc import (
     BootstrapStub,
@@ -28,6 +23,7 @@ from vault.common.generated.vault_pb2_grpc import (
     ShareServerStub,
     add_ManagerServicer_to_server,
 )
+from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
 from vault.manager.db_manager import DBManager
 from vault.manager.setup_master import SetupMaster
 
@@ -39,35 +35,60 @@ logging.basicConfig(
 class Manager(ManagerServicer):
     def __init__(
         self,
+        name: str,
         port: int,
-        ip: str,
         db_host: str,
         db_port: int,
         db_username: str,
         db_password: str,
         db_name: str,
         num_of_share_servers: int,
+        setup_master_port: int,
+        setup_unit_port: int,
+        bootstrap_port: int,
+        share_server_port: int,
+        docker_image: str,
+        ca_cert_path: str = "certs/ca.crt",
+        ca_key_path: str = "certs/ca.key",
     ):
         self._logger = logging.getLogger(__class__.__name__)
-        # grpc server
         self._port = port
-        self._ip = ip
+        self._name = name
+        self._cert, self._ssl_privkey = generate_component_cert_and_key(
+            name=name,
+            ca_cert_path=ca_cert_path,
+            ca_key_path=ca_key_path,
+        )
+        self._ca_cert = load_ca_cert(ca_cert_path)
+        self._num_of_share_servers = num_of_share_servers
+        self._share_servers_data: List[types.ServiceData] = []
+        self._ready = False
+        self._setup_master_port = setup_master_port
+        self._setup_unit_port = setup_unit_port
+        self._bootstrap_port = bootstrap_port
+        self._share_server_port = share_server_port
+        self._docker_image = docker_image
+        self._ca_cert_path = ca_cert_path
+        self._ca_key_path = ca_key_path
+
+        # grpc server
+        creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
-        self._port = self._server.add_insecure_port(f"{self._ip}:{self._port}")
+        self._port = self._server.add_secure_port(f"[::]:{self._port}", creds)
 
         # DB
         self._db = DBManager(
             f"postgresql+asyncpg://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
         )
+
+        # Setup master
         self._setup_master_service: SetupMaster = SetupMaster(
+            port=setup_master_port,
+            setup_unit_port=setup_unit_port,
             db=self._db,
-            server_ip="[::]",
-            server_port=SETUP_MASTER_SERVICE_PORT,
+            docker_image=docker_image,
         )
-        self._num_of_share_servers = num_of_share_servers
-        self._share_servers_data: List[types.ServiceData] = []
-        self._ready = False
 
     async def start(self):
         await self._db.start()
@@ -107,16 +128,24 @@ class Manager(ManagerServicer):
         # Add user's public key to the end of the list, where the bootstrap expects it
         public_keys.append(request.user_public_key)
 
-        # create bootstrap
-        bootstrap_server_data = (
-            await self._setup_master_service.spawn_bootstrap_server()
+        # Create bootstrap
+        bootstrap_server_data = await self._setup_master_service.spawn_bootstrap_server(
+            environment={
+                "PORT": self._bootstrap_port,
+                "SETUP_UNIT_PORT": self._setup_unit_port,
+                "SETUP_MASTER_ADDRESS": self._name,
+                "SETUP_MASTER_PORT": self._setup_master_port,
+                "CA_CERT_PATH": self._ca_cert_path,
+                "CA_KEY_PATH": self._ca_key_path,
+            }
+        )
+        bootstrap_address = (
+            f"{bootstrap_server_data.container_name}:{self._bootstrap_port}"
         )
 
         # Sending generate shares request to bootstrap
-        bootstrap_address = (
-            f"{bootstrap_server_data.ip_address}:{BOOTSTRAP_SERVER_PORT}"
-        )
-        async with grpc.aio.insecure_channel(bootstrap_address) as channel:
+        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
+        async with grpc.aio.secure_channel(bootstrap_address, creds) as channel:
             stub = BootstrapStub(channel)
             bootstrap_response: GenerateSharesResponse = await stub.GenerateShares(
                 GenerateSharesRequest(
@@ -134,11 +163,12 @@ class Manager(ManagerServicer):
 
         # Send shares to share servers
         servers_addresses = await self._db.get_servers_addresses()
-        for share, server_adress in zip(
+        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
+        for share, server_address in zip(
             bootstrap_response.encrypted_shares, servers_addresses
         ):
-            async with grpc.aio.insecure_channel(
-                f"{server_adress}:{SHARE_SERVER_PORT}"
+            async with grpc.aio.secure_channel(
+                f"{server_address}:{self._share_server_port}", creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 share_server_response: StoreShareResponse = await stub.StoreShare(
@@ -146,7 +176,7 @@ class Manager(ManagerServicer):
                 )
                 if not share_server_response.success:
                     self._logger.error(
-                        f"Failed to store share on server {server_adress}"
+                        f"Failed to store share on server {server_address}"
                     )
 
         # Send to user his share and encryption key
@@ -191,9 +221,10 @@ class Manager(ManagerServicer):
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
-        for server_adress in servers_addresses:
-            async with grpc.aio.insecure_channel(
-                f"{server_adress}:{SHARE_SERVER_PORT}"
+        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
+        for server_address in servers_addresses:
+            async with grpc.aio.secure_channel(
+                f"{server_address}:{self._share_server_port}", creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 response: DecryptResponse = await stub.Decrypt(
@@ -205,10 +236,20 @@ class Manager(ManagerServicer):
         )
 
     async def launch_all_share_servers(self):
+        environment = {
+            "PORT": self._share_server_port,
+            "SETUP_UNIT_PORT": self._setup_unit_port,
+            "SETUP_MASTER_ADDRESS": self._name,
+            "SETUP_MASTER_PORT": self._setup_master_port,
+            "CA_CERT_PATH": self._ca_cert_path,
+            "CA_KEY_PATH": self._ca_key_path,
+        }
         for i in range(self._num_of_share_servers):
-            self._logger.debug(f"creating share server number {i}")
+            self._logger.info(f"creating share server number {i}")
             self._share_servers_data.append(
-                await self._setup_master_service.spawn_share_server()
+                await self._setup_master_service.spawn_share_server(
+                    environment=environment
+                )
             )
 
         # TODO: make paralel and by not blocking on each share server and sample the db.

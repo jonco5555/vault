@@ -5,32 +5,26 @@ import grpc
 from google.protobuf.empty_pb2 import Empty
 
 from vault.common import docker_utils, types
-from vault.common.constants import (
-    SETUP_MASTER_DNS_ADDRESS,
-    SETUP_MASTER_SERVICE_PORT,
-    SETUP_UNIT_SERVICE_PORT,
-)
 from vault.common.generated import setup_pb2, setup_pb2_grpc
 
 
 class SetupUnit(setup_pb2_grpc.SetupUnit):
     def __init__(
         self,
+        port: int,
         service_type: types.ServiceType,
-        server_ip: str = "[::]",
-        setup_master_address: str = SETUP_MASTER_DNS_ADDRESS,
+        setup_master_address: str,
+        setup_master_port: int,
     ):
+        self._port = port
         self._setup_master_address = setup_master_address
-        self._setup_master_port = SETUP_MASTER_SERVICE_PORT
+        self._setup_master_port = setup_master_port
         self._service_type = service_type
 
         self._termination_condvar = asyncio.Condition()
 
-        self._server_ip = server_ip
         self._running_server = None
-        self._running_server_task = asyncio.create_task(
-            self._start_setup_unit_server(self._server_ip)
-        )
+        self._running_server_task = asyncio.create_task(self._start_setup_unit_server())
 
     # setup_pb2_grpc.SetupUnit inherited methods
     async def Terminate(self, request: Empty, context):
@@ -54,36 +48,25 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         service_data = types.ServiceData(
             type=self._service_type,
             container_id=self_container_id,
-            ip_address=docker_utils.get_container_address(self_container_id),
+            container_name=docker_utils.get_container_name(self_container_id),
             public_key=pub_key,
         )
-
         await self._register(service_data)
 
     async def unregister(self):
         await self._unregister(docker_utils.get_self_container_id())
 
-    # TODO
-    def get_public_key():
-        pass
-
-    # TODO
-    def get_private_key():
-        pass
-
     # Private methods
-    async def _start_setup_unit_server(self, server_ip: str = "[::]"):
+    async def _start_setup_unit_server(self):
         try:
             self._running_server = grpc.aio.server(
                 futures.ThreadPoolExecutor(max_workers=2)
             )
             setup_pb2_grpc.add_SetupUnitServicer_to_server(self, self._running_server)
-            self._running_server.add_insecure_port(
-                f"{server_ip}:{SETUP_UNIT_SERVICE_PORT}"
-            )
+            self._running_server.add_insecure_port(f"[::]:{self._port}")
             await self._running_server.start()
             print(
-                f"SetupUnit started start_setup_master_server on port {SETUP_UNIT_SERVICE_PORT}..."
+                f"SetupUnit started start_setup_master_server on port {self._port}..."
             )
             await self._running_server.wait_for_termination()
         except asyncio.CancelledError:

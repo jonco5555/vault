@@ -6,12 +6,6 @@ import grpc
 from google.protobuf.empty_pb2 import Empty
 
 from vault.common import docker_utils, types
-from vault.common.constants import (
-    DOCKER_BOOTSTRAP_SERVER_COMMAND,
-    DOCKER_IMAGE_NAME,
-    DOCKER_SHARE_SERVER_COMMAND,
-    SETUP_UNIT_SERVICE_PORT,
-)
 from vault.common.generated import setup_pb2, setup_pb2_grpc
 from vault.manager.db_manager import DBManager
 
@@ -19,9 +13,10 @@ from vault.manager.db_manager import DBManager
 class SetupMaster(setup_pb2_grpc.SetupMaster):
     def __init__(
         self,
+        port: int,
+        setup_unit_port: int,
         db: DBManager,
-        server_ip: str,
-        server_port: int,
+        docker_image: str,
     ):
         setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
@@ -30,11 +25,13 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._is_setup_finished = False
         self._is_setup_finished_lock = asyncio.Lock()
 
-        self._server_ip = server_ip
-        self._server_port = server_port
+        self._port = port
+        self._setup_unit_port = setup_unit_port
+        self._docker_image = docker_image
+
         self._server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
         setup_pb2_grpc.add_SetupMasterServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"{self._server_ip}:{self._server_port}")
+        self._server.add_insecure_port(f"[::]:{self._port}")
 
         self.bootstrap_idx = 0
         self.share_server_idx = 0
@@ -71,13 +68,19 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         return setup_pb2.SetupUnregisterResponse(is_unregistered=is_unregistered)
 
     # API methods
-    async def spawn_bootstrap_server(self, block: bool = True) -> types.ServiceData:
+    # TODO: combine spawn_bootstrap_server and spawn_share_server into spawn_service and get parameters from manager
+    async def spawn_bootstrap_server(
+        self, block: bool = True, environment: dict = {}
+    ) -> types.ServiceData:
+        # TODO: Bootstrap does not need a counting index, it can has a uuid and should be removed from the DB when finishes
         self.bootstrap_idx += 1
         print("spawn_container", flush=True)
         container = docker_utils.spawn_container(
-            DOCKER_IMAGE_NAME,
+            self._docker_image,
             container_name=f"vault-bootstrap-{self.bootstrap_idx}",
-            command=DOCKER_BOOTSTRAP_SERVER_COMMAND,
+            command="vault bootstrap",
+            network="vault-net",
+            environment=environment,
         )
         service_data = None
         if block:
@@ -87,12 +90,16 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
             )
         return service_data
 
-    async def spawn_share_server(self, block: bool = True) -> types.ServiceData:
+    async def spawn_share_server(
+        self, block: bool = True, environment: dict = {}
+    ) -> types.ServiceData:
         self.share_server_idx += 1
         container = docker_utils.spawn_container(
-            DOCKER_IMAGE_NAME,
+            self._docker_image,
             container_name=f"vault-share-{self.share_server_idx}",
-            command=DOCKER_SHARE_SERVER_COMMAND,
+            command="vault share-server",
+            network="vault-net",
+            environment=environment,
         )
 
         service_data = None
@@ -106,7 +113,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
     async def terminate_service(
         self, service_data: types.ServiceData, block: bool = True
     ):
-        _address = f"{service_data.ip_address}:{SETUP_UNIT_SERVICE_PORT}"
+        _address = f"{service_data.container_name}:{self._setup_unit_port}"
         async with grpc.aio.insecure_channel(_address) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())

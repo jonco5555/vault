@@ -12,8 +12,7 @@ from vault.common.generated.vault_pb2 import (
 )
 from vault.common.generated.vault_pb2_grpc import ManagerStub
 from vault.common.types import Key
-from vault.crypto import asymmetric
-from vault.crypto import threshold
+from vault.crypto import asymmetric, certs, threshold
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -28,6 +27,7 @@ class User:
         server_port: int,
         threshold: int,
         num_of_total_shares: int,
+        ca_cert_path: str = "certs/ca.crt",
     ):
         self._logger = logging.getLogger(__class__.__name__)
         self._user_id = user_id
@@ -36,13 +36,15 @@ class User:
         self._threshold = threshold
         self._num_of_total_shares = num_of_total_shares
         self._privkey_b64, self._pubkey_b64 = asymmetric.generate_key_pair()
-        self.encrypted_share = None
+        self._ca_cert = certs.load_ca_cert(ca_cert_path)
+        self._creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
+        self._encrypted_share = None
         self._encryption_key = None
         self._secrets_ids = set()
 
     async def register(self):
-        async with grpc.aio.insecure_channel(
-            f"{self._server_ip}:{self._server_port}"
+        async with grpc.aio.secure_channel(
+            f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
             response: RegisterResponse = await stub.Register(
@@ -63,8 +65,8 @@ class User:
     async def store_secret(self, secret: str, secret_id: str) -> bool:
         self._secrets_ids.add(secret_id)
         encrypted_secret = threshold.encrypt(secret, self._encryption_key)
-        async with grpc.aio.insecure_channel(
-            f"{self._server_ip}:{self._server_port}"
+        async with grpc.aio.secure_channel(
+            f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
             response: StoreSecretResponse = await stub.StoreSecret(
@@ -82,8 +84,8 @@ class User:
             print(f"Secret ID {secret_id} not found for user {self._user_id}")
             return None
 
-        async with grpc.aio.insecure_channel(
-            f"{self._server_ip}:{self._server_port}"
+        async with grpc.aio.secure_channel(
+            f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
             response: RetrieveSecretResponse = await stub.RetrieveSecret(

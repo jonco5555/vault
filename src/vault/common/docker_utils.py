@@ -5,8 +5,6 @@ from typing import Optional
 
 import docker
 
-from vault.common.constants import DOCKER_NETWORK_NAME
-
 DOCKER_RUNTIME_SOCKET = "/var/run/docker.sock"
 VOLUMES = {
     f"{DOCKER_RUNTIME_SOCKET}": {"bind": f"{DOCKER_RUNTIME_SOCKET}", "mode": "rw"}
@@ -18,6 +16,8 @@ def spawn_container(
     image_tag: str = "latest",
     container_name: Optional[str] = None,
     command: Optional[str] = None,
+    network: Optional[str] = None,
+    environment: Optional[dict[str, str]] = None,
 ):
     client = docker.from_env()
 
@@ -28,7 +28,8 @@ def spawn_container(
         command=command,
         detach=True,  # run in background
         volumes=VOLUMES,
-        network=DOCKER_NETWORK_NAME,
+        network=network,
+        environment=environment,
     )
 
     return container
@@ -54,6 +55,12 @@ def get_container_address(container_id: str) -> str:
     container = client.containers.get(container_id)
     networks = container.attrs["NetworkSettings"]["Networks"]
     return next(iter(networks.values()))["IPAddress"]
+
+
+def get_container_name(container_id: str) -> str:
+    client = docker.DockerClient(base_url=f"unix:/{DOCKER_RUNTIME_SOCKET}")
+    container = client.containers.get(container_id)
+    return container.name
 
 
 async def wait_for_container_to_stop(container_id: str, timeout: float | None = None):
