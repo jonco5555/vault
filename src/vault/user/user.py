@@ -1,5 +1,5 @@
 import logging
-
+from typing import Union
 import grpc
 
 from vault.common.generated.vault_pb2 import (
@@ -9,10 +9,20 @@ from vault.common.generated.vault_pb2 import (
     RetrieveSecretResponse,
     StoreSecretRequest,
     StoreSecretResponse,
+    SecureReqMsgWrapper,
+    SecureRespMsgWrapper,
+    SRPFirstStep,
+    SRPThirdStep,
+    InnerRequest,
+    InnerResponse,
 )
 from vault.common.generated.vault_pb2_grpc import ManagerStub
 from vault.common.types import Key
 from vault.crypto import asymmetric, certs, threshold
+from vault.crypto.authentication import (
+    srp_registration_client_generate_data,
+    srp_authentication_client_step_two,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -42,7 +52,12 @@ class User:
         self._encryption_key = None
         self._secrets_ids = set()
 
-    async def register(self):
+    async def register(self, password: str):
+        _, password_verifier, salt = srp_registration_client_generate_data(
+            username=self._user_id,
+            password=password,
+        )
+
         async with grpc.aio.secure_channel(
             f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
@@ -50,6 +65,8 @@ class User:
             response: RegisterResponse = await stub.Register(
                 RegisterRequest(
                     user_id=self._user_id,
+                    verifier=password_verifier,
+                    salt=salt,
                     user_public_key=self._pubkey_b64,
                 )
             )
@@ -62,39 +79,132 @@ class User:
                 )
             )
 
-    async def store_secret(self, secret: str, secret_id: str) -> bool:
-        self._secrets_ids.add(secret_id)
-        encrypted_secret = threshold.encrypt(secret, self._encryption_key)
+    # --- Client code: secure call ---
+    async def do_secure_call(
+        self,
+        password: str,
+        request_protobuf: Union[
+            RegisterRequest,
+            StoreSecretRequest,
+            RetrieveSecretRequest,
+        ],
+    ) -> bytes:
         async with grpc.aio.secure_channel(
             f"{self._server_ip}:{self._server_port}", self._creds
         ) as channel:
             stub = ManagerStub(channel)
-            response: StoreSecretResponse = await stub.StoreSecret(
-                StoreSecretRequest(
-                    user_id=self._user_id,
-                    secret_id=secret_id,
-                    secret=encrypted_secret,
+            call = stub.SecureCall()
+
+            # send client_init
+            await call.write(
+                SecureReqMsgWrapper(auth_step_1=SRPFirstStep(username=self._user_id))
+            )
+
+            # read server_resp
+            auth_step_2_msg: SecureRespMsgWrapper = await call.read()
+            if not auth_step_2_msg or not auth_step_2_msg.HasField("auth_step_2"):
+                raise RuntimeError("expected auth_step_2")
+
+            salt: str = auth_step_2_msg.auth_step_2.salt
+            server_public: str = auth_step_2_msg.auth_step_2.server_public_key
+
+            client_public, _client_session_key, client_session_key_proof = (
+                srp_authentication_client_step_two(
+                    username=self._user_id,
+                    password=password,
+                    server_public_key=server_public,
+                    salt=salt,
                 )
             )
-            return response.success
 
-    async def retrieve_secret(self, secret_id: str) -> str | None:
+            await call.write(
+                SecureReqMsgWrapper(
+                    auth_step_3=SRPThirdStep(
+                        client_public_key=client_public,
+                        client_session_key_proof=client_session_key_proof,
+                    )
+                )
+            )
+            auth_step_3_ack_msg: SecureRespMsgWrapper = await call.read()
+            if not auth_step_3_ack_msg or not auth_step_3_ack_msg.HasField(
+                "auth_step_3_ack"
+            ):
+                raise RuntimeError("expected auth_step_3_ack")
+
+            if not auth_step_3_ack_msg.auth_step_3_ack.ok:
+                raise RuntimeError("expected ok")
+
+            # send application request
+            app_req = self._create_inner_request_from_user_request(request_protobuf)
+            await call.write(SecureReqMsgWrapper(app_req=app_req))
+
+            # read app response
+            app_resp_msg = await call.read()
+            await call.done_writing()
+
+            if not app_resp_msg or not app_resp_msg.HasField("app_resp"):
+                raise RuntimeError("expected app_resp")
+            app_res = self._create_user_response_from_inner_response(
+                app_resp_msg.app_resp
+            )
+            return app_res
+
+    def _create_inner_request_from_user_request(
+        self,
+        request_protobuf: Union[
+            StoreSecretRequest,
+            RetrieveSecretRequest,
+        ],
+    ) -> InnerRequest:
+        if type(request_protobuf) is StoreSecretRequest:
+            return InnerRequest(store=request_protobuf)
+        elif type(request_protobuf) is RetrieveSecretRequest:
+            return InnerRequest(retrieve=request_protobuf)
+        else:
+            raise RuntimeError(
+                f"unknown request_protobuf type: {type(request_protobuf)}"
+            )
+
+    def _create_user_response_from_inner_response(
+        self,
+        inner_response: InnerResponse,
+    ) -> Union[
+        StoreSecretResponse,
+        RetrieveSecretResponse,
+    ]:
+        if inner_response.HasField("store"):
+            return inner_response.store
+        elif inner_response.HasField("retrieve"):
+            return inner_response.retrieve
+        else:
+            raise RuntimeError("unknown InnerRequest body type")
+
+    async def store_secret(self, password: str, secret: str, secret_id: str) -> bool:
+        self._secrets_ids.add(secret_id)
+        encrypted_secret = threshold.encrypt(secret, self._encryption_key)
+        response: StoreSecretResponse = await self.do_secure_call(
+            password=password,
+            request_protobuf=StoreSecretRequest(
+                user_id=self._user_id,
+                secret_id=secret_id,
+                secret=encrypted_secret,
+            ),
+        )
+        return response.success
+
+    async def retrieve_secret(self, password: str, secret_id: str) -> str | None:
         # TODO: Do the user really needs to save secret_ids?
         if secret_id not in self._secrets_ids:
             print(f"Secret ID {secret_id} not found for user {self._user_id}")
             return None
 
-        async with grpc.aio.secure_channel(
-            f"{self._server_ip}:{self._server_port}", self._creds
-        ) as channel:
-            stub = ManagerStub(channel)
-            response: RetrieveSecretResponse = await stub.RetrieveSecret(
-                RetrieveSecretRequest(
-                    user_id=self._user_id,
-                    secret_id=secret_id,
-                    auth_token="valid_token",  # TODO: implement auth token
-                )
-            )
+        response: RetrieveSecretResponse = await self.do_secure_call(
+            password=password,
+            request_protobuf=RetrieveSecretRequest(
+                user_id=self._user_id,
+                secret_id=secret_id,
+            ),
+        )
 
         if not response.partial_decryptions:
             print(f"Failed to retrieve secret {secret_id} for user {self._user_id}")

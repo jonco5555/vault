@@ -1,6 +1,5 @@
 import typing
 
-import grpc
 import grpc_testing
 import pytest
 import pytest_asyncio
@@ -54,17 +53,6 @@ def manager_server(manager) -> _Server:
     )
 
 
-def invoke_method(request, server: _Server, method: str):
-    method_descriptor = DESCRIPTOR.services_by_name["Manager"].methods_by_name[method]
-    rpc = server.invoke_unary_unary(
-        method_descriptor=method_descriptor,
-        invocation_metadata={},
-        request=request,
-        timeout=1,
-    )
-    return rpc.termination()
-
-
 @pytest.mark.asyncio
 async def test_store_secret_works(
     user_id: str,
@@ -81,13 +69,10 @@ async def test_store_secret_works(
     )
     await manager._db.add_user(user_id, b"user_pubkey")
 
-    # Act
-    response, _, code, _ = invoke_method(request, manager_server, "StoreSecret")
-    response = await response
+    response = await manager.store_secret(request)
+    assert response.success
 
     # Assert
-    assert code == grpc.StatusCode.OK
-    assert response.success
     assert (
         await manager._db.get_secret(user_id, secret_id) == secret.SerializeToString()
     )
@@ -104,14 +89,8 @@ async def test_retrieve_secret_works(
     # Arrange
     await manager._db.add_user(user_id, b"user_pubkey")
     await manager._db.add_secret(user_id, secret_id, secret.SerializeToString())
-    request = RetrieveSecretRequest(
-        user_id=user_id, secret_id=secret_id, auth_token="token"
-    )
-
-    # Act
-    response, _, code, _ = invoke_method(request, manager_server, "RetrieveSecret")
-    response = await response
+    request = RetrieveSecretRequest(user_id=user_id, secret_id=secret_id)
+    response = await manager.retrieve_secret(request)
 
     # Assert
-    assert code == grpc.StatusCode.OK
     assert response.secret == secret
