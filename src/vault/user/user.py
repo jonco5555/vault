@@ -26,7 +26,6 @@ class User:
         server_ip: str,
         server_port: int,
         threshold: int,
-        num_of_share_servers: int,
         num_of_total_shares: int,
         ca_cert_path: str = "certs/ca.crt",
     ):
@@ -36,7 +35,6 @@ class User:
         self._server_port = server_port
         self._threshold = threshold
         self._num_of_total_shares = num_of_total_shares
-        self._num_of_share_servers = num_of_share_servers
         self._privkey_b64, self._pubkey_b64 = asymmetric.generate_key_pair()
         self._ca_cert = certs.load_ca_cert(ca_cert_path)
         self._creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)

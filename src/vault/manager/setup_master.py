@@ -97,7 +97,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         container = docker_utils.spawn_container(
             self._docker_image,
             container_name=f"vault-share-{self.share_server_idx}",
-            command="vault share_server",
+            command="vault share-server",
             network="vault-net",
             environment=environment,
         )

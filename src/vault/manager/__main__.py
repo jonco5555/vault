@@ -1,15 +1,7 @@
 import asyncio
 import signal
 
-from vault.common.constants import (
-    DB_DNS_ADDRESS,
-    DB_NAME,
-    DB_PASSWORD,
-    DB_PORT,
-    DB_USERNAME,
-    MANAGER_NUM_SHARE_SERVERS,
-    MANAGER_SERVER_PORT,
-)
+from vault.common import docker_utils
 from vault.manager.manager import Manager
 
 
@@ -18,38 +10,56 @@ async def wait_for_signal(signals=(signal.SIGINT, signal.SIGTERM)):
     stop_event = asyncio.Event()
 
     def handler(sig):
-        print(f"Received signal: {sig!s}")
+        print(f"Received signal: {sig!s}", flush=True)
         stop_event.set()
 
     # Register signal handlers
     for sig in signals:
         loop.add_signal_handler(sig, handler, sig)
 
+    print("Running until a signal is received", flush=True)
     await stop_event.wait()
+    print("Got a termination signal, cleaning up and exiting gracefully", flush=True)
 
     # Cleanup handlers
     for sig in signals:
         loop.remove_signal_handler(sig)
 
 
-async def main():
+async def main(
+    port: int,
+    db_host: str,
+    db_port: int,
+    db_username: str,
+    db_password: str,
+    db_name: str,
+    num_of_share_servers: int,
+    setup_master_port: int,
+    setup_unit_port: int,
+    bootstrap_port: int,
+    share_server_port: int,
+    docker_image: str,
+    ca_cert_path: str,
+    ca_key_path: str,
+):
+    name = docker_utils.get_container_name(docker_utils.get_self_container_id())
     manager_server = Manager(
-        port=MANAGER_SERVER_PORT,
-        db_host=DB_DNS_ADDRESS,
-        db_port=DB_PORT,
-        db_username=DB_USERNAME,
-        db_password=DB_PASSWORD,
-        db_name=DB_NAME,
-        num_of_share_servers=MANAGER_NUM_SHARE_SERVERS,
+        name=name,
+        port=port,
+        db_host=db_host,
+        db_port=db_port,
+        db_username=db_username,
+        db_password=db_password,
+        db_name=db_name,
+        num_of_share_servers=num_of_share_servers,
+        setup_master_port=setup_master_port,
+        setup_unit_port=setup_unit_port,
+        bootstrap_port=bootstrap_port,
+        share_server_port=share_server_port,
+        docker_image=docker_image,
+        ca_cert_path=ca_cert_path,
+        ca_key_path=ca_key_path,
     )
     await manager_server.start()
-    manager_server._logger.info("Running until a signal is received")
     await wait_for_signal()
-    manager_server._logger.info(
-        "Got a termination signal, cleaning up and exiting gracefully"
-    )
     await manager_server.stop()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

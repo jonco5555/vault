@@ -68,6 +68,8 @@ class Manager(ManagerServicer):
         self._bootstrap_port = bootstrap_port
         self._share_server_port = share_server_port
         self._docker_image = docker_image
+        self._ca_cert_path = ca_cert_path
+        self._ca_key_path = ca_key_path
 
         # grpc server
         creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
@@ -133,6 +135,8 @@ class Manager(ManagerServicer):
                 "SETUP_UNIT_PORT": self._setup_unit_port,
                 "SETUP_MASTER_ADDRESS": self._name,
                 "SETUP_MASTER_PORT": self._setup_master_port,
+                "CA_CERT_PATH": self._ca_cert_path,
+                "CA_KEY_PATH": self._ca_key_path,
             }
         )
         bootstrap_address = (
@@ -237,9 +241,11 @@ class Manager(ManagerServicer):
             "SETUP_UNIT_PORT": self._setup_unit_port,
             "SETUP_MASTER_ADDRESS": self._name,
             "SETUP_MASTER_PORT": self._setup_master_port,
+            "CA_CERT_PATH": self._ca_cert_path,
+            "CA_KEY_PATH": self._ca_key_path,
         }
         for i in range(self._num_of_share_servers):
-            self._logger.debug(f"creating share server number {i}")
+            self._logger.info(f"creating share server number {i}")
             self._share_servers_data.append(
                 await self._setup_master_service.spawn_share_server(
                     environment=environment

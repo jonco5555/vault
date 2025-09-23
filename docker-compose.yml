@@ -37,6 +37,8 @@ services:
       BOOTSTRAP_PORT: 5000
       SHARE_SERVER_PORT: 5000
       DOCKER_IMAGE: vault
+      CA_CERT_PATH: /app/certs/ca.crt
+      CA_KEY_PATH: /app/certs/ca.key
     depends_on:
       postgres:
         condition: service_healthy  # wait until postgres is healthy
