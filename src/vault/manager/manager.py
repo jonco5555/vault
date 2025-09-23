@@ -72,6 +72,9 @@ class Manager(ManagerServicer):
         self._ca_key_path = ca_key_path
 
         # grpc server
+        self._client_creds = grpc.ssl_channel_credentials(
+            root_certificates=self._ca_cert
+        )
         creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
         self._server = grpc.aio.server()
         add_ManagerServicer_to_server(self, self._server)
@@ -88,6 +91,8 @@ class Manager(ManagerServicer):
             setup_unit_port=setup_unit_port,
             db=self._db,
             docker_image=docker_image,
+            server_creds=creds,
+            client_creds=self._client_creds,
         )
 
     async def start(self):
@@ -144,8 +149,9 @@ class Manager(ManagerServicer):
         )
 
         # Sending generate shares request to bootstrap
-        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
-        async with grpc.aio.secure_channel(bootstrap_address, creds) as channel:
+        async with grpc.aio.secure_channel(
+            bootstrap_address, self._client_creds
+        ) as channel:
             stub = BootstrapStub(channel)
             bootstrap_response: GenerateSharesResponse = await stub.GenerateShares(
                 GenerateSharesRequest(
@@ -163,12 +169,11 @@ class Manager(ManagerServicer):
 
         # Send shares to share servers
         servers_addresses = await self._db.get_servers_addresses()
-        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         for share, server_address in zip(
             bootstrap_response.encrypted_shares, servers_addresses
         ):
             async with grpc.aio.secure_channel(
-                f"{server_address}:{self._share_server_port}", creds
+                f"{server_address}:{self._share_server_port}", self._client_creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 share_server_response: StoreShareResponse = await stub.StoreShare(
@@ -221,10 +226,9 @@ class Manager(ManagerServicer):
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
         partial_decryptions: list[PartialDecrypted] = []
-        creds = grpc.ssl_channel_credentials(root_certificates=self._ca_cert)
         for server_address in servers_addresses:
             async with grpc.aio.secure_channel(
-                f"{server_address}:{self._share_server_port}", creds
+                f"{server_address}:{self._share_server_port}", self._client_creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 response: DecryptResponse = await stub.Decrypt(

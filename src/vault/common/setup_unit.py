@@ -15,11 +15,15 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
         service_type: types.ServiceType,
         setup_master_address: str,
         setup_master_port: int,
+        server_creds: grpc.ServerCredentials,
+        client_creds: grpc.ChannelCredentials,
     ):
         self._port = port
         self._setup_master_address = setup_master_address
         self._setup_master_port = setup_master_port
         self._service_type = service_type
+        self._server_creds = server_creds
+        self._client_creds = client_creds
 
         self._termination_condvar = asyncio.Condition()
 
@@ -63,7 +67,9 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
                 futures.ThreadPoolExecutor(max_workers=2)
             )
             setup_pb2_grpc.add_SetupUnitServicer_to_server(self, self._running_server)
-            self._running_server.add_insecure_port(f"[::]:{self._port}")
+            self._running_server.add_secure_port(
+                f"[::]:{self._port}", self._server_creds
+            )
             await self._running_server.start()
             print(
                 f"SetupUnit started start_setup_master_server on port {self._port}..."
@@ -75,7 +81,7 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
 
     async def _register(self, service_data: types.ServiceData):
         _address = f"{self._setup_master_address}:{self._setup_master_port}"
-        async with grpc.aio.insecure_channel(_address) as channel:
+        async with grpc.aio.secure_channel(_address, self._client_creds) as channel:
             stub = setup_pb2_grpc.SetupMasterStub(channel)
             resp: setup_pb2.SetupRegisterResponse = await stub.SetupRegister(
                 types.ServiceData_to_SetupRegisterRequest(service_data)
@@ -87,7 +93,7 @@ class SetupUnit(setup_pb2_grpc.SetupUnit):
 
     async def _unregister(self, container_id: str):
         _address = f"{self._setup_master_address}:{self._setup_master_port}"
-        async with grpc.aio.insecure_channel(_address) as channel:
+        async with grpc.aio.secure_channel(_address, self._client_creds) as channel:
             stub = setup_pb2_grpc.SetupMasterStub(channel)
             resp: setup_pb2.SetupUnregisterResponse = await stub.SetupUnregister(
                 setup_pb2.SetupUnregisterRequest(container_id=container_id)
