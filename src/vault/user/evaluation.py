@@ -3,7 +3,6 @@ import uuid
 import time
 from tqdm import tqdm
 from typing import Dict
-import pickle
 
 from vault.user.user import User
 
@@ -47,7 +46,6 @@ async def benchmark_throughput_main(
     storage_total_time = storage_stop_time - storage_start_time
     storage_avg_time = storage_total_time / iterations
     secret_ids_to_storage_time = {item[0]: item[1] for item in results}
-    print("All tasks finished:", results)
     print(f"{storage_avg_time=}")
 
     print("Retrieve secrets...", flush=True)
@@ -60,7 +58,6 @@ async def benchmark_throughput_main(
     retrieval_stop_time = time.time()
     retrieval_total_time = retrieval_stop_time - retrieval_start_time
     retrieval_avg_time = retrieval_total_time / iterations
-    print("All tasks finished:", results)
     print(f"{retrieval_avg_time=}")
 
     storage_throughput = iterations / storage_total_time
@@ -78,7 +75,7 @@ async def benchmark_latency_main(
 
     print("Storing secrets...", flush=True)
     storage_start_time = time.time()
-    for i in tqdm(range(iterations)):
+    for i in range(iterations):
         curr_secret: str = str(uuid.uuid4())
         curr_secret_id: str = str(uuid.uuid4())
         await user_obj.store_secret(
@@ -97,7 +94,7 @@ async def benchmark_latency_main(
 
     print("Retrieving secrets...", flush=True)
     retrieval_start_time = time.time()
-    for curr_secret_id, curr_secret in tqdm(secrets.items()):
+    for curr_secret_id, curr_secret in secrets.items():
         retrieved_secret = await user_obj.retrieve_secret(
             password=password,
             secret_id=curr_secret_id,
@@ -154,17 +151,16 @@ async def main(
         ca_cert_path=ca_cert_path,
     )
     password = "mypass"
-    iterations = 50
 
     print("Registring...", flush=True)
     await user_obj.register(password=password)
 
-    iterations = [1, 2, 4, 6, 8, 10, 15, 20, 30, 40, 50, 70, 100]  # ,130,170,240,300]
+    iterations = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     storage_latencies = []
     storage_throughputs = []
     retrieval_latencies = []
     retrieval_throughputs = []
-    for iter in iterations:
+    for iter in tqdm(iterations):
         (
             storage_throughput,
             retrieval_throughput,
@@ -185,13 +181,18 @@ async def main(
     print(f"{retrieval_latencies=}")
     print(f"{retrieval_throughputs=}")
 
-    to_save = {
-        "iterations": iterations,
-        "storage_latencies": storage_latencies,
-        "storage_throughputs": storage_throughputs,
-        "retrieval_latencies": retrieval_latencies,
-        "retrieval_throughputs": retrieval_throughputs,
-    }
+    # to_save = {
+    #     "iterations": iterations,
+    #     "storage_latencies": storage_latencies,
+    #     "storage_throughputs": storage_throughputs,
+    #     "retrieval_latencies": retrieval_latencies,
+    #     "retrieval_throughputs": retrieval_throughputs,
+    # }
 
-    with open("/data/lists.pkl", "wb") as f:
-        pickle.dump(to_save, f)
+    # print("writing to /vol/lists.pkl !")
+    # with open("/vol/lists.pkl", "wb") as f:
+    #     pickle.dump(to_save, f)
+    #     f.flush()       # flush Python internal buffer
+    #     os.fsync(f.fileno())  # flush OS buffers to disk
+    # print("writing to /vol/lists.pkl !")
+    # await asyncio.sleep(10)
