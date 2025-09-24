@@ -206,10 +206,6 @@ class User:
             ),
         )
 
-        if not response.partial_decryptions:
-            print(f"Failed to retrieve secret {secret_id} for user {self._user_id}")
-            return None
-
         share = Key.model_validate_json(
             asymmetric.decrypt(self._encrypted_share, self._privkey_b64)
         )
