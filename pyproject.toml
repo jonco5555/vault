@@ -22,6 +22,8 @@ dependencies = [
     "cryptography>=45.0.7",
     "srptools>=1.0.1",
     "typer>=0.19.1",
+    "tqdm>=4.67.1",
+    "matplotlib>=3.10.6",
 ]
 
 [project.scripts]
