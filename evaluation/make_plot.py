@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import tempfile
 import subprocess
 import os
-import pickle
+import json
 
 from time import sleep
 
@@ -50,19 +50,22 @@ def make_plot(
 
     # Layout and show
     plt.tight_layout()
-    plt.savefig(f"./evaluation/figures/{save_name}", dpi=300, bbox_inches="tight")
+    # plt.savefig(f"./evaluation/figures/{save_name}", dpi=300, bbox_inches="tight")
     plt.show()
 
 
-def run_evaluation():
+def run_evaluation(num_share_servers):
     tmpdir = tempfile.TemporaryDirectory()
     temp_dir = tmpdir.name
     print(f"Temporary dir created: {temp_dir}")
 
+    env = os.environ.copy()
+    env["NUM_SHARE_SERVERS_ENV"] = str(num_share_servers)
+
     subprocess.run(["docker-compose", "build"])
-    subprocess.Popen(["docker-compose", "up", "-d"])
+    subprocess.Popen(["docker-compose", "up", "-d"], env=env)
     sleep(15)
-    subprocess.run(
+    result = subprocess.run(
         [
             "docker",
             "run",
@@ -72,8 +75,6 @@ def run_evaluation():
             "vault-net",
             "--name",
             "vault-user",
-            "-v",
-            f"{temp_dir}:/vol",
             "vault:latest",
             "vault",
             "evaluation-user",
@@ -84,22 +85,27 @@ def run_evaluation():
             "--server-port",
             "5000",
             "--threshold",
-            "3",
+            f"{num_share_servers + 1}",
             "--num-of-total-shares",
-            "3",
+            f"{num_share_servers + 1}",
             "--ca-cert-path",
             "/app/certs/ca.crt",
-        ]
+        ],
+        capture_output=True,  # capture stdout/stderr
+        text=True,  # decode bytes to string automatically
+        check=True,  # raise exception if command fails
     )
+    output_str = result.stdout.strip()
+    print(f"{output_str}")
+    loaded_lists = json.loads(output_str)
+
     subprocess.run(["docker-compose", "down"])
 
-    with open(os.path.join(temp_dir, "lists.pkl"), "rb") as f:
-        loaded_lists = pickle.load(f)
-        iterations = loaded_lists["iterations"]
-        storage_latencies = loaded_lists["storage_latencies"]
-        storage_throughputs = loaded_lists["storage_throughputs"]
-        retrieval_latencies = loaded_lists["retrieval_latencies"]
-        retrieval_throughputs = loaded_lists["retrieval_throughputs"]
+    iterations = loaded_lists["iterations"]
+    storage_latencies = loaded_lists["storage_latencies"]
+    storage_throughputs = loaded_lists["storage_throughputs"]
+    retrieval_latencies = loaded_lists["retrieval_latencies"]
+    retrieval_throughputs = loaded_lists["retrieval_throughputs"]
     return (
         iterations,
         storage_latencies,
@@ -110,14 +116,15 @@ def run_evaluation():
 
 
 if __name__ == "__main__":
-    # (
-    #     iterations,
-    #     storage_latencies,
-    #     storage_throughputs,
-    #     retrieval_latencies,
-    #     retrieval_throughputs,
-    # ) = run_evaluation()
-    iterations = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    num_share_servers = 3
+    (
+        iterations,
+        storage_latencies,
+        storage_throughputs,
+        retrieval_latencies,
+        retrieval_throughputs,
+    ) = run_evaluation(num_share_servers=num_share_servers)
+    # iterations = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
     # ZERO SHARE SERVERS
     # num_share_servers=0
@@ -141,59 +148,59 @@ if __name__ == "__main__":
     # retrieval_throughputs=[7.79785208357115, 8.620253167158516, 10.925301257542834, 10.776574852884123, 9.456431561697983, 9.885979595157702, 9.173975532151536, 8.774172463318157, 8.317722703575589, 10.090098373868063, 9.386424539231907]
 
     # EIGHT SHARE SERVERS:
-    num_share_servers = 8
-    storage_latencies = [
-        0.09295716285705566,
-        0.08777565956115722,
-        0.09878194332122803,
-        0.08858563105265299,
-        0.09348608255386352,
-        0.09104504585266113,
-        0.09506626923878987,
-        0.09516617230006627,
-        0.09608559608459473,
-        0.08875725799136691,
-        0.10219867944717408,
-    ]
-    storage_throughputs = [
-        12.120304228217398,
-        14.336873653238245,
-        13.349726993362223,
-        13.719971066065455,
-        13.44567921764898,
-        14.354406863386957,
-        13.790340425312724,
-        12.807511660084888,
-        13.481510451330683,
-        14.154075210937465,
-        12.755575423156223,
-    ]
-    retrieval_latencies = [
-        0.1722555637359619,
-        0.15796144008636476,
-        0.1670721650123596,
-        0.167867644627889,
-        0.1717471718788147,
-        0.2005323839187622,
-        0.18219200372695923,
-        0.1733016014099121,
-        0.17200062274932862,
-        0.1764021529091729,
-        0.1987622618675232,
-    ]
-    retrieval_throughputs = [
-        7.9270147597347425,
-        8.667330273468133,
-        7.78009704568797,
-        8.136041408944884,
-        7.184903511675414,
-        8.386898414627163,
-        8.21643560459869,
-        8.265774342303706,
-        8.75538349085332,
-        8.304515552788514,
-        8.013353245155646,
-    ]
+    # num_share_servers = 8
+    # storage_latencies = [
+    #     0.09295716285705566,
+    #     0.08777565956115722,
+    #     0.09878194332122803,
+    #     0.08858563105265299,
+    #     0.09348608255386352,
+    #     0.09104504585266113,
+    #     0.09506626923878987,
+    #     0.09516617230006627,
+    #     0.09608559608459473,
+    #     0.08875725799136691,
+    #     0.10219867944717408,
+    # ]
+    # storage_throughputs = [
+    #     12.120304228217398,
+    #     14.336873653238245,
+    #     13.349726993362223,
+    #     13.719971066065455,
+    #     13.44567921764898,
+    #     14.354406863386957,
+    #     13.790340425312724,
+    #     12.807511660084888,
+    #     13.481510451330683,
+    #     14.154075210937465,
+    #     12.755575423156223,
+    # ]
+    # retrieval_latencies = [
+    #     0.1722555637359619,
+    #     0.15796144008636476,
+    #     0.1670721650123596,
+    #     0.167867644627889,
+    #     0.1717471718788147,
+    #     0.2005323839187622,
+    #     0.18219200372695923,
+    #     0.1733016014099121,
+    #     0.17200062274932862,
+    #     0.1764021529091729,
+    #     0.1987622618675232,
+    # ]
+    # retrieval_throughputs = [
+    #     7.9270147597347425,
+    #     8.667330273468133,
+    #     7.78009704568797,
+    #     8.136041408944884,
+    #     7.184903511675414,
+    #     8.386898414627163,
+    #     8.21643560459869,
+    #     8.265774342303706,
+    #     8.75538349085332,
+    #     8.304515552788514,
+    #     8.013353245155646,
+    # ]
 
     make_plot(
         num_application_calls=iterations,

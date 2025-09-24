@@ -31,7 +31,7 @@ services:
       DB_USERNAME: user
       DB_PASSWORD: pass
       DB_NAME: proddb
-      NUM_SHARE_SERVERS: 2
+      NUM_SHARE_SERVERS: ${NUM_SHARE_SERVERS_ENV:-2}
       SETUP_MASTER_PORT: 4000
       SETUP_UNIT_PORT: 4000
       BOOTSTRAP_PORT: 5000
