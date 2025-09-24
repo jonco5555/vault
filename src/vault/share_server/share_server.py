@@ -13,7 +13,7 @@ from vault.common.generated.vault_pb2_grpc import (
 )
 from vault.common.types import Key
 from vault.crypto.asymmetric import decrypt, generate_key_pair
-from vault.crypto.certs import generate_component_cert_and_key
+from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
 from vault.crypto.threshold import partial_decrypt
 
 logging.basicConfig(
@@ -36,12 +36,20 @@ class ShareServer(ShareServerServicer):
             ca_cert_path=ca_cert_path,
             ca_key_path=ca_key_path,
         )
+        self._ca_cert = load_ca_cert(ca_cert_path)
 
         # grpc server
-        creds = grpc.ssl_server_credentials([(self._ssl_privkey, self._cert)])
+        self._server_creds = grpc.ssl_server_credentials(
+            [(self._ssl_privkey, self._cert)]
+        )
+        self._client_creds = grpc.ssl_channel_credentials(
+            root_certificates=self._ca_cert
+        )
         self._server = grpc.aio.server()
         add_ShareServerServicer_to_server(self, self._server)
-        self._port = self._server.add_secure_port(f"[::]:{self._port}", creds)
+        self._port = self._server.add_secure_port(
+            f"[::]:{self._port}", self._server_creds
+        )
 
         self._privkey_b64, self._pubkey_b64 = generate_key_pair()
         self._encrypted_shares: dict[bytes] = {}
