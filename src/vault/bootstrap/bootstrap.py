@@ -17,6 +17,8 @@ logging.basicConfig(
 
 
 class Bootstrap(BootstrapServicer):
+    """Bootstrap service for managing the generation of key shares."""
+
     def __init__(
         self,
         name: str,
@@ -47,15 +49,41 @@ class Bootstrap(BootstrapServicer):
         )
 
     async def start(self):
+        """
+        Starts the Bootstrap gRPC server.
+
+        Returns:
+            None
+        """
         await self._server.start()
         self._logger.info(f"Bootstrap server started on port {self._port}")
 
     async def close(self):
+        """
+        Stops the Bootstrap gRPC server.
+
+        Returns:
+            None
+        """
         if self._server:
             await self._server.stop(grace=5.0)
         self._logger.info("Bootstrap server stopped")
 
     async def GenerateShares(self, request, context):
+        """
+        Handles the GenerateShares gRPC request to generate and encrypt key shares.
+
+        This method generates a threshold encryption key and splits it into shares.
+        Each share is encrypted with the corresponding public key from the request.
+        The final encryption key is encrypted with the user's public key.
+
+        Args:
+            request: The gRPC request containing threshold, num_of_shares, and public_keys.
+            context: The gRPC context for error handling and status reporting.
+
+        Returns:
+            GenerateSharesResponse: Contains the encrypted shares and encrypted key.
+        """
         self._logger.info("Bootstrap generating shares!")
         encryption_key, shares = generate_key_and_shares(
             request.threshold, request.num_of_shares

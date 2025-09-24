@@ -5,6 +5,7 @@ nav:
   - Design: design_implementation.md
   - Advanced Details: advanced_details.md
   - How to run: how_to_run.md
+  - Code Reference: reference/
 
 theme:
   name: material
@@ -39,6 +40,13 @@ theme:
 plugins:
   - search
   - awesome-pages
+  - gen-files:
+      scripts:
+      - docs/scripts/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - mkdocstrings
+  - section-index
   # - markdown-exec
 markdown_extensions:
   - admonition
