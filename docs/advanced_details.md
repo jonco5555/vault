@@ -7,7 +7,7 @@ When each service is launched, it generates its own TLS certificate signed by a 
 The CA keys are a part of the docker image of every component.
 
 We use `cryptography` package and `RSA`.
-Reference:  [`vault/crypto/certs.py`](/reference/vault/crypto/certs/).
+Reference:  [`vault/crypto/certs.py`](/vault/reference/vault/crypto/certs/).
 
 ## End-to-End Encryption of Secret Shares
 To ensure that secret shares are never exposed in plaintext outside their intended destination, our system employs an end-to-end encryption mechanism during the bootstrap phase.
@@ -19,7 +19,7 @@ During user registration, the bootstrap service receives the public keys of the 
 This design achieves true end-to-end encryption: the bootstrap service never transmits raw shares, the manager never has the ability to decrypt them, and only the intended recipients can access their respective shares.
 
 We use `pynacl` package and `nacl.public.SealedBox`.
-Reference:  [`vault/crypto/asymmetric.py`](/reference/vault/crypto/asymmetric/).
+Reference:  [`vault/crypto/asymmetric.py`](/vault/reference/vault/crypto/asymmetric/).
 
 ## Threshold Cryptography
 Threshold cryptography means a message can be easily encrypted using a simple public key, but the decryption key is divided into n shares, where at least t of them are required to reconstruct the original secret.
@@ -28,7 +28,7 @@ To generate encryption key and decryption shares, we use [threshold-crypto](http
 This package is using a hybrid approach using `pynacl` for symmetric encryption and `PyCryptodome` for ECC operations, therefore there are no limitations regarding the size of the secret.
 The integrity of a message is secured using the AE-scheme, meaning changes to some parts of the ciphertext, to partial decryptions or even dishonest share owners can be detected.
 
-Reference:  [`vault/crypto/threshold.py`](/reference/vault/crypto/threshold/).
+Reference:  [`vault/crypto/threshold.py`](/vault/reference/vault/crypto/threshold/).
 
 ## System Setup Process
 In our system, the generation of secret shares requires a temporary “bootstrap” environment to securely create and handle sensitive data. A key challenge is that this bootstrap Docker container must be terminated immediately after completing its task, to minimize exposure and prevent potential compromise of the secrets.
@@ -37,7 +37,7 @@ To address this, we designed a setup architecture composed of a `SetupMaster` an
 
 Moreover, this infrastructure allows us to send critical data on setup, such as public E2E keys that we will see later, as well as the complement’s new address so the manager will be able to communicate with it.
 Building on this infrastructure, we also used the same master-unit architecture to orchestrate the long-lived share servers. By leveraging the established orchestration system, we can manage server deployment, registration, and coordination in a consistent and secure manner, reducing operational complexity while maintaining robust control over the threshold cryptography environment.
-The following is a diagram of the setup flow, defined in the `setup.proto` file and implemented in [`setup_master.py`](/reference/vault/manager/setup_master/) and [`setup_unit.py`](/reference/vault/common/setup_unit/) files:
+The following is a diagram of the setup flow, defined in the `setup.proto` file and implemented in [`setup_master.py`](/vault/reference/vault/manager/setup_master/) and [`setup_unit.py`](/vault/reference/vault/common/setup_unit/) files:
 
 ```mermaid
 sequenceDiagram
