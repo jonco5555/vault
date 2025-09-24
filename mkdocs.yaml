@@ -2,6 +2,10 @@ site_name: Vault
 repo_url: https://github.com/jonco5555/vault
 nav:
   - Home: index.md
+  - Design: design_implementation.md
+  - Advanced Details: advanced_details.md
+  - How to run: how_to_run.md
+
 theme:
   name: material
   palette:
