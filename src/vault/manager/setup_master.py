@@ -17,6 +17,8 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         setup_unit_port: int,
         db: DBManager,
         docker_image: str,
+        server_creds: grpc.ServerCredentials,
+        client_creds: grpc.ChannelCredentials,
     ):
         setup_pb2_grpc.SetupMaster.__init__(self)
         self._db = db
@@ -28,10 +30,12 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self._port = port
         self._setup_unit_port = setup_unit_port
         self._docker_image = docker_image
+        self._client_creds = client_creds
 
+        # grpc server
         self._server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
         setup_pb2_grpc.add_SetupMasterServicer_to_server(self, self._server)
-        self._server.add_insecure_port(f"[::]:{self._port}")
+        self._server.add_secure_port(f"[::]:{self._port}", server_creds)
 
         self.bootstrap_idx = 0
         self.share_server_idx = 0
@@ -114,7 +118,7 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         self, service_data: types.ServiceData, block: bool = True
     ):
         _address = f"{service_data.container_name}:{self._setup_unit_port}"
-        async with grpc.aio.insecure_channel(_address) as channel:
+        async with grpc.aio.secure_channel(_address, self._client_creds) as channel:
             stub = setup_pb2_grpc.SetupUnitStub(channel)
             await stub.Terminate(Empty())
         if block:

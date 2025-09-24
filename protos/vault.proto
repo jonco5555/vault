@@ -3,24 +3,78 @@ syntax = "proto3";
 package vault;
 
 service Manager {
-    rpc Register(RegisterRequest) returns (RegisterResponse);
-    rpc StoreSecret(StoreSecretRequest) returns (StoreSecretResponse);
-    rpc RetrieveSecret(RetrieveSecretRequest) returns (RetrieveSecretResponse);
+  // Register username over SRP protocol and store end-2-end encryption key.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Single bidirectional stream: SRP login handshake + authenticated application request/response
+  rpc SecureCall(stream SecureReqMsgWrapper) returns (stream SecureRespMsgWrapper);
 }
 
 message RegisterRequest {
-    string user_id = 1;
-    bytes user_public_key = 2;
-}
-
-message Key {
-    string x = 1;
-    string y = 2;
+  string user_id = 1;
+  string verifier = 2;
+  string salt = 3;
+  bytes user_public_key = 4;
 }
 
 message RegisterResponse {
     bytes encrypted_share = 1;
     bytes encrypted_key = 2;
+}
+
+// wrapper for a real message
+message SRPFirstStep {
+  string username = 1;
+}
+
+message SRPSecondStep {
+  string server_public_key = 1;
+  string salt = 2;
+}
+
+message SRPThirdStep {
+  string client_public_key = 1;
+  string client_session_key_proof = 2;
+}
+
+message SRPThirdStepAck {
+  bool ok = 1;
+  string err = 2;
+}
+
+message InnerRequest {
+  oneof body {
+    StoreSecretRequest store = 1;
+    RetrieveSecretRequest retrieve = 2;
+  }
+}
+
+message InnerResponse {
+  oneof body {
+    StoreSecretResponse store = 1;
+    RetrieveSecretResponse retrieve = 2;
+  }
+}
+
+message SecureReqMsgWrapper {
+  oneof body {
+    SRPFirstStep auth_step_1 = 1;
+    SRPThirdStep auth_step_3 = 2;
+    InnerRequest app_req = 3;
+  }
+}
+
+message SecureRespMsgWrapper {
+  oneof body {
+    SRPSecondStep auth_step_2 = 1;
+    SRPThirdStepAck auth_step_3_ack = 2;
+    InnerResponse app_resp = 3;
+  }
+}
+
+message Key {
+    string x = 1;
+    string y = 2;
 }
 
 message Secret {
@@ -47,7 +101,6 @@ message StoreSecretResponse {
 message RetrieveSecretRequest {
     string user_id = 1;
     string secret_id = 2;
-    string auth_token = 3;
 }
 
 message RetrieveSecretResponse {
