@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 import time
-from tqdm import tqdm
+import json
 from typing import Dict
 
 from vault.user.user import User
@@ -36,7 +36,7 @@ async def benchmark_throughput_main(
         storage_end_time = time.time()
         return curr_secret_id, curr_secret, storage_end_time - storage_start_time
 
-    print("Storing secrets...", flush=True)
+    # print("Storing secrets...", flush=True)
     storage_start_time = time.time()
     tasks = [
         asyncio.create_task(store_single_secret(user_obj)) for i in range(iterations)
@@ -44,11 +44,11 @@ async def benchmark_throughput_main(
     results = await asyncio.gather(*tasks)
     storage_stop_time = time.time()
     storage_total_time = storage_stop_time - storage_start_time
-    storage_avg_time = storage_total_time / iterations
+    # storage_avg_time = storage_total_time / iterations
     secret_ids_to_storage_time = {item[0]: item[1] for item in results}
-    print(f"{storage_avg_time=}")
+    # print(f"{storage_avg_time=}")
 
-    print("Retrieve secrets...", flush=True)
+    # print("Retrieve secrets...", flush=True)
     retrieval_start_time = time.time()
     tasks = [
         asyncio.create_task(retrieve_single_secret(user_obj, curr_secret_id))
@@ -57,8 +57,8 @@ async def benchmark_throughput_main(
     results = await asyncio.gather(*tasks)
     retrieval_stop_time = time.time()
     retrieval_total_time = retrieval_stop_time - retrieval_start_time
-    retrieval_avg_time = retrieval_total_time / iterations
-    print(f"{retrieval_avg_time=}")
+    # retrieval_avg_time = retrieval_total_time / iterations
+    # print(f"{retrieval_avg_time=}")
 
     storage_throughput = iterations / storage_total_time
     retrieval_throughput = iterations / retrieval_total_time
@@ -73,7 +73,7 @@ async def benchmark_latency_main(
 ):
     secrets: Dict[str, str] = {}
 
-    print("Storing secrets...", flush=True)
+    # print("Storing secrets...", flush=True)
     storage_start_time = time.time()
     for i in range(iterations):
         curr_secret: str = str(uuid.uuid4())
@@ -87,12 +87,12 @@ async def benchmark_latency_main(
     storage_end_time = time.time()
     storage_total_time = storage_end_time - storage_start_time
     storage_avg_time = storage_total_time / iterations
-    print(
-        f"Done storing secrets. {storage_total_time=}s, {storage_avg_time=}s",
-        flush=True,
-    )
+    # print(
+    #     f"Done storing secrets. {storage_total_time=}s, {storage_avg_time=}s",
+    #     flush=True,
+    # )
 
-    print("Retrieving secrets...", flush=True)
+    # print("Retrieving secrets...", flush=True)
     retrieval_start_time = time.time()
     for curr_secret_id, curr_secret in secrets.items():
         retrieved_secret = await user_obj.retrieve_secret(
@@ -104,10 +104,10 @@ async def benchmark_latency_main(
     retrieval_end_time = time.time()
     retrieval_total_time = retrieval_end_time - retrieval_start_time
     retrieval_avg_time = retrieval_total_time / iterations
-    print(
-        f"Done retrieving secrets. {retrieval_total_time=}s, {retrieval_avg_time=}s",
-        flush=True,
-    )
+    # print(
+    #     f"Done retrieving secrets. {retrieval_total_time=}s, {retrieval_avg_time=}s",
+    #     flush=True,
+    # )
 
     storage_latency = storage_avg_time
     retrieval_latency = retrieval_avg_time
@@ -126,11 +126,11 @@ async def make_point(user_obj: User, password: str, iterations: int):
         password=password,
         iterations=iterations,
     )
-    print("-----------Iteration Summery-----------")
-    print(f"{storage_throughput=}(req/s)")
-    print(f"{retrieval_throughput=}(req/s)")
-    print(f"{storage_latency=}(s/req)")
-    print(f"{retrieval_latency=}(s/req)")
+    # print("-----------Iteration Summery-----------")
+    # print(f"{storage_throughput=}(req/s)")
+    # print(f"{retrieval_throughput=}(req/s)")
+    # print(f"{storage_latency=}(s/req)")
+    # print(f"{retrieval_latency=}(s/req)")
     return storage_throughput, retrieval_throughput, storage_latency, retrieval_latency
 
 
@@ -152,15 +152,15 @@ async def main(
     )
     password = "mypass"
 
-    print("Registring...", flush=True)
+    # print("Registring...", flush=True)
     await user_obj.register(password=password)
 
-    iterations = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    iterations = [5]  # , 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     storage_latencies = []
     storage_throughputs = []
     retrieval_latencies = []
     retrieval_throughputs = []
-    for iter in tqdm(iterations):
+    for iter in iterations:
         (
             storage_throughput,
             retrieval_throughput,
@@ -175,11 +175,20 @@ async def main(
         storage_throughputs.append(storage_throughput)
         retrieval_latencies.append(retrieval_latency)
         retrieval_throughputs.append(retrieval_throughput)
-    print("--------------BENCHMARK-SUMMERY--------------")
-    print(f"{storage_latencies=}")
-    print(f"{storage_throughputs=}")
-    print(f"{retrieval_latencies=}")
-    print(f"{retrieval_throughputs=}")
+    to_print = {
+        "iterations": iterations,
+        "storage_latencies": storage_latencies,
+        "storage_throughputs": storage_throughputs,
+        "retrieval_latencies": retrieval_latencies,
+        "retrieval_throughputs": retrieval_throughputs,
+    }
+    print(json.dumps(to_print))
+
+    # print("--------------BENCHMARK-SUMMERY--------------")
+    # print(f"{storage_latencies=}")
+    # print(f"{storage_throughputs=}")
+    # print(f"{retrieval_latencies=}")
+    # print(f"{retrieval_throughputs=}")
 
     # to_save = {
     #     "iterations": iterations,
