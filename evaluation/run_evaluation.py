@@ -1,5 +1,6 @@
+from typing import Optional
+import argparse
 import matplotlib.pyplot as plt
-import tempfile
 import subprocess
 import os
 import json
@@ -15,12 +16,9 @@ def make_plot(
     throughputs_label,
     x_label,
     title,
-    save_name,
+    save_name: Optional[str] = None,
 ):
-    # Create figure and primary axis
-    fig, ax1 = plt.subplots(figsize=(8, 5))
-
-    # Plot throughput on left y-axis
+    _, ax1 = plt.subplots(figsize=(8, 5))
     color = "tab:blue"
     ax1.set_xlabel(x_label)
     ax1.set_ylabel(throughputs_label, color=color)
@@ -29,36 +27,29 @@ def make_plot(
     )
     ax1.tick_params(axis="y", labelcolor=color)
 
-    # Create secondary y-axis for latency
     ax2 = ax1.twinx()
     color = "tab:red"
     ax2.set_ylabel(latencies_label, color=color)
     ax2.plot(num_application_calls, latencies, color=color, marker="x", label="Latency")
     ax2.tick_params(axis="y", labelcolor=color)
 
-    # Add grid to both axes
     ax1.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.7)
     ax2.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.7)
 
-    # Optional: add legends
     lines, labels = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines + lines2, labels + labels2, loc="upper left")
 
-    # Add a title
     plt.title(title)
 
-    # Layout and show
     plt.tight_layout()
-    # plt.savefig(f"./evaluation/figures/{save_name}", dpi=300, bbox_inches="tight")
+    if save_name:
+        plt.savefig(f"./evaluation/figures/{save_name}", dpi=300, bbox_inches="tight")
     plt.show()
 
 
 def run_evaluation(num_share_servers):
-    tmpdir = tempfile.TemporaryDirectory()
-    temp_dir = tmpdir.name
-    print(f"Temporary dir created: {temp_dir}")
-
+    # 'NUM_SHARE_SERVERS_ENV' is parameter for 'docker-compose up'``
     env = os.environ.copy()
     env["NUM_SHARE_SERVERS_ENV"] = str(num_share_servers)
 
@@ -91,12 +82,13 @@ def run_evaluation(num_share_servers):
             "--ca-cert-path",
             "/app/certs/ca.crt",
         ],
-        capture_output=True,  # capture stdout/stderr
-        text=True,  # decode bytes to string automatically
-        check=True,  # raise exception if command fails
+        # capture output to retrieve test results
+        capture_output=True,
+        text=True,
+        check=True,
     )
     output_str = result.stdout.strip()
-    print(f"{output_str}")
+    print(f"raw test results: {output_str}")
     loaded_lists = json.loads(output_str)
 
     subprocess.run(["docker-compose", "down"])
@@ -116,14 +108,42 @@ def run_evaluation(num_share_servers):
 
 
 if __name__ == "__main__":
-    num_share_servers = 3
+    parser = argparse.ArgumentParser(
+        description="Run latency-throughput evaluation on a vault system"
+    )
+    parser.add_argument("--num-share-servers", type=int, required=True)
+    args = parser.parse_args()
+
     (
         iterations,
         storage_latencies,
         storage_throughputs,
         retrieval_latencies,
         retrieval_throughputs,
-    ) = run_evaluation(num_share_servers=num_share_servers)
+    ) = run_evaluation(num_share_servers=args.num_share_servers)
+
+    make_plot(
+        num_application_calls=iterations,
+        latencies=storage_latencies,
+        throughputs=storage_throughputs,
+        latencies_label="Storage Latency (s/req)",
+        throughputs_label="Storage Throughput (req/s)",
+        x_label="Storage Requests (req)",
+        title=f"Storage Latency and Throughput vs Storage Requests ({args.num_share_servers} Share servers)",
+        # save_name=f"Storage_Latency_Throughput_{args.num_share_servers}_Share_servers",
+    )
+
+    make_plot(
+        num_application_calls=iterations,
+        latencies=retrieval_latencies,
+        throughputs=retrieval_throughputs,
+        latencies_label="Retrieval Latency (s/req)",
+        throughputs_label="Retrieval Throughput (req/s)",
+        x_label="Retrieval Requests (req)",
+        title=f"Retrieval Latency and Throughput vs Retrieval Requests ({args.num_share_servers} Share servers)",
+        # save_name=f"Retrieval_Latency_Throughput_{args.num_share_servers}_Share_servers",
+    )
+
     # iterations = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
     # ZERO SHARE SERVERS
@@ -201,25 +221,3 @@ if __name__ == "__main__":
     #     8.304515552788514,
     #     8.013353245155646,
     # ]
-
-    make_plot(
-        num_application_calls=iterations,
-        latencies=storage_latencies,
-        throughputs=storage_throughputs,
-        latencies_label="Storage Latency (s/req)",
-        throughputs_label="Storage Throughput (req/s)",
-        x_label="Storage Requests (req)",
-        title=f"Storage Latency and Throughput vs Storage Requests ({num_share_servers} Share servers)",
-        save_name=f"Storage_Latency_Throughput_{num_share_servers}_Share_servers",
-    )
-
-    make_plot(
-        num_application_calls=iterations,
-        latencies=retrieval_latencies,
-        throughputs=retrieval_throughputs,
-        latencies_label="Retrieval Latency (s/req)",
-        throughputs_label="Retrieval Throughput (req/s)",
-        x_label="Retrieval Requests (req)",
-        title=f"Retrieval Latency and Throughput vs Retrieval Requests ({num_share_servers} Share servers)",
-        save_name=f"Retrieval_Latency_Throughput_{num_share_servers}_Share_servers",
-    )
