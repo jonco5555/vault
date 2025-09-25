@@ -2,13 +2,14 @@ import asyncio
 import uuid
 import time
 import json
+
 from typing import Dict
 
 from vault.user.user import User
 
 
 # To run several times, each time on diffarent number of share servers
-async def benchmark_throughput_main(
+async def benchmark_parallel_main(
     user_obj: User,
     password: str,
     iterations: int,
@@ -36,7 +37,6 @@ async def benchmark_throughput_main(
         storage_end_time = time.time()
         return curr_secret_id, curr_secret, storage_end_time - storage_start_time
 
-    # print("Storing secrets...", flush=True)
     storage_start_time = time.time()
     tasks = [
         asyncio.create_task(store_single_secret(user_obj)) for i in range(iterations)
@@ -44,11 +44,11 @@ async def benchmark_throughput_main(
     results = await asyncio.gather(*tasks)
     storage_stop_time = time.time()
     storage_total_time = storage_stop_time - storage_start_time
-    # storage_avg_time = storage_total_time / iterations
     secret_ids_to_storage_time = {item[0]: item[1] for item in results}
-    # print(f"{storage_avg_time=}")
+    single_storage_avg_time = sum(secret_ids_to_storage_time.values()) / len(
+        secret_ids_to_storage_time.values()
+    )
 
-    # print("Retrieve secrets...", flush=True)
     retrieval_start_time = time.time()
     tasks = [
         asyncio.create_task(retrieve_single_secret(user_obj, curr_secret_id))
@@ -57,16 +57,19 @@ async def benchmark_throughput_main(
     results = await asyncio.gather(*tasks)
     retrieval_stop_time = time.time()
     retrieval_total_time = retrieval_stop_time - retrieval_start_time
-    # retrieval_avg_time = retrieval_total_time / iterations
-    # print(f"{retrieval_avg_time=}")
+    secret_ids_to_retrieval_time = {item[0]: item[2] for item in results}
+    single_retrieval_avg_time = sum(secret_ids_to_retrieval_time.values()) / len(
+        secret_ids_to_retrieval_time.values()
+    )
 
     storage_throughput = iterations / storage_total_time
     retrieval_throughput = iterations / retrieval_total_time
-    return storage_throughput, retrieval_throughput
+    storage_latency = single_storage_avg_time
+    retrieval_latency = single_retrieval_avg_time
+    return storage_throughput, storage_latency, retrieval_throughput, retrieval_latency
 
 
-# To run several times, each time on diffarent number of share servers
-async def benchmark_latency_main(
+async def benchmark_sequential_main(
     user_obj: User,
     password: str,
     iterations: int,
@@ -87,12 +90,7 @@ async def benchmark_latency_main(
     storage_end_time = time.time()
     storage_total_time = storage_end_time - storage_start_time
     storage_avg_time = storage_total_time / iterations
-    # print(
-    #     f"Done storing secrets. {storage_total_time=}s, {storage_avg_time=}s",
-    #     flush=True,
-    # )
 
-    # print("Retrieving secrets...", flush=True)
     retrieval_start_time = time.time()
     for curr_secret_id, curr_secret in secrets.items():
         retrieved_secret = await user_obj.retrieve_secret(
@@ -104,34 +102,10 @@ async def benchmark_latency_main(
     retrieval_end_time = time.time()
     retrieval_total_time = retrieval_end_time - retrieval_start_time
     retrieval_avg_time = retrieval_total_time / iterations
-    # print(
-    #     f"Done retrieving secrets. {retrieval_total_time=}s, {retrieval_avg_time=}s",
-    #     flush=True,
-    # )
 
     storage_latency = storage_avg_time
     retrieval_latency = retrieval_avg_time
     return storage_latency, retrieval_latency
-
-
-async def make_point(user_obj: User, password: str, iterations: int):
-    storage_throughput, retrieval_throughput = await benchmark_throughput_main(
-        user_obj=user_obj,
-        password=password,
-        iterations=iterations,
-    )
-
-    storage_latency, retrieval_latency = await benchmark_latency_main(
-        user_obj=user_obj,
-        password=password,
-        iterations=iterations,
-    )
-    # print("-----------Iteration Summery-----------")
-    # print(f"{storage_throughput=}(req/s)")
-    # print(f"{retrieval_throughput=}(req/s)")
-    # print(f"{storage_latency=}(s/req)")
-    # print(f"{retrieval_latency=}(s/req)")
-    return storage_throughput, retrieval_throughput, storage_latency, retrieval_latency
 
 
 async def main(
@@ -152,10 +126,9 @@ async def main(
     )
     password = "mypass"
 
-    # print("Registring...", flush=True)
     await user_obj.register(password=password)
 
-    iterations = [5]  # , 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    iterations = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     storage_latencies = []
     storage_throughputs = []
     retrieval_latencies = []
@@ -163,10 +136,10 @@ async def main(
     for iter in iterations:
         (
             storage_throughput,
-            retrieval_throughput,
             storage_latency,
+            retrieval_throughput,
             retrieval_latency,
-        ) = await make_point(
+        ) = await benchmark_parallel_main(
             user_obj=user_obj,
             password=password,
             iterations=iter,
@@ -182,6 +155,10 @@ async def main(
         "retrieval_latencies": retrieval_latencies,
         "retrieval_throughputs": retrieval_throughputs,
     }
+
+    # This is not ideal, but currently the way for us to retrieve the test results is
+    # through the stdout of the evaluation-user docker. so we print the results, and
+    # catch them in the test script.
     print(json.dumps(to_print))
 
     # print("--------------BENCHMARK-SUMMERY--------------")
@@ -189,19 +166,3 @@ async def main(
     # print(f"{storage_throughputs=}")
     # print(f"{retrieval_latencies=}")
     # print(f"{retrieval_throughputs=}")
-
-    # to_save = {
-    #     "iterations": iterations,
-    #     "storage_latencies": storage_latencies,
-    #     "storage_throughputs": storage_throughputs,
-    #     "retrieval_latencies": retrieval_latencies,
-    #     "retrieval_throughputs": retrieval_throughputs,
-    # }
-
-    # print("writing to /vol/lists.pkl !")
-    # with open("/vol/lists.pkl", "wb") as f:
-    #     pickle.dump(to_save, f)
-    #     f.flush()       # flush Python internal buffer
-    #     os.fsync(f.fileno())  # flush OS buffers to disk
-    # print("writing to /vol/lists.pkl !")
-    # await asyncio.sleep(10)
