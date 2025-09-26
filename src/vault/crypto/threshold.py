@@ -64,7 +64,7 @@ def partial_decrypt(secret: Secret, share: types.Key) -> types.PartialDecryption
         share (Key): The share (Key) used for partial decryption.
 
     Returns:
-        PartialDecrypted: The result of the partial decryption.
+        types.PartialDecryption: The result of the partial decryption.
     """
     partial_decrypted = tc.compute_partial_decryption(
         EncryptedMessage(
@@ -90,7 +90,7 @@ def decrypt(
     Decrypts a secret using a list of partial decryptions and threshold parameters.
 
     Args:
-        partial_decryptions (list[PartialDecrypted]): List of partial decryption results.
+        partial_decryptions (list[types.PartialDecryption]): List of partial decryption results.
         secret (Secret): The encrypted secret to decrypt.
         threshold (int): Minimum number of shares required for decryption.
         num_of_shares (int): Total number of shares.
