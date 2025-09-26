@@ -8,7 +8,7 @@ from typing import Dict
 from vault.user.user import User
 
 
-# To run several times, each time on diffarent number of share servers
+# To run several times, each time on different number of share servers
 async def benchmark_parallel_main(
     user_obj: User,
     password: str,

@@ -17,7 +17,7 @@ def run_evaluation(num_share_servers):
     env["NUM_SHARE_SERVERS_ENV"] = str(num_share_servers)
 
     subprocess.run(["docker-compose", "build"])
-    subprocess.Popen(["docker-compose", "up", "-d"], env=env)
+    subprocess.run(["docker-compose", "up", "-d"], env=env)
     sleep(20)
     result = subprocess.run(
         [
