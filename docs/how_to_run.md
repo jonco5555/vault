@@ -48,7 +48,7 @@ chmod +x ./run_test_case.sh
 ./run_test_case.sh
 ```
 
-## Running Evaluation Example
+## Running Evaluation
 ```bash
 uv run ./evaluation/run_evaluation.py
 ```
