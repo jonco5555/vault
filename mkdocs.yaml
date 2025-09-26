@@ -47,7 +47,9 @@ plugins:
       nav_file: SUMMARY.md
   - mkdocstrings
   - section-index
-  # - markdown-exec
+  - with-pdf:
+      output_path: site/pdf/vault.pdf
+      enabled_if_env: ENABLE_PDF_EXPORT
 markdown_extensions:
   - admonition
   - codehilite
