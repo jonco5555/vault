@@ -54,11 +54,11 @@ plugins:
       output_path: pdf/vault.pdf
       enabled_if_env: ENABLE_PDF_EXPORT
       exclude_pages:
-        - '*/reference/*'
+        - 'reference/*'
   - print-site:
       print_page_title: Vault
       exclude:
-        - '*/reference/*'
+        - 'reference/*'
 markdown_extensions:
   - admonition
   - codehilite

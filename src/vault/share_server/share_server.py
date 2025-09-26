@@ -12,7 +12,7 @@ from vault.common.generated.vault_pb2_grpc import (
     add_ShareServerServicer_to_server,
 )
 from vault.common.types import Key
-from vault.crypto.asymmetric import decrypt, generate_key_pair
+from vault.crypto.asymmetric import decrypt, encrypt, generate_key_pair
 from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
 from vault.crypto.threshold import partial_decrypt
 
@@ -90,5 +90,10 @@ class ShareServer(ShareServerServicer):
         share = Key.model_validate_json(
             decrypt(self._encrypted_shares.get(request.user_id), self._privkey_b64)
         )
-        partial_decrypted = partial_decrypt(request.secret, share)
-        return DecryptResponse(partial_decrypted_secret=partial_decrypted)
+        partial_decryption = partial_decrypt(request.secret, share)
+        encrypted_partial_decryption = encrypt(
+            partial_decryption.model_dump_json().encode(), request.user_public_key
+        )
+        return DecryptResponse(
+            encrypted_partial_decryption=encrypted_partial_decryption
+        )

@@ -8,7 +8,7 @@ from threshold_crypto.data import (
 
 from vault.common import types
 from vault.common.generated import vault_pb2 as pb2
-from vault.common.generated.vault_pb2 import PartialDecrypted, Secret
+from vault.common.generated.vault_pb2 import Secret
 
 
 def generate_key_and_shares(
@@ -55,7 +55,7 @@ def encrypt(message: str, encryption_key: types.Key) -> Secret:
     )
 
 
-def partial_decrypt(secret: Secret, share: types.Key) -> PartialDecrypted:
+def partial_decrypt(secret: Secret, share: types.Key) -> types.PartialDecryption:
     """
     Performs a partial decryption of a secret using a given share.
 
@@ -74,14 +74,14 @@ def partial_decrypt(secret: Secret, share: types.Key) -> PartialDecrypted:
         ),
         KeyShare(int(share.x), int(share.y), tc.CurveParameters()),
     )
-    return PartialDecrypted(
+    return types.PartialDecryption(
         x=str(partial_decrypted.x),
-        yc1=pb2.Key(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
+        yc1=types.Key(x=str(partial_decrypted.yC1.x), y=str(partial_decrypted.yC1.y)),
     )
 
 
 def decrypt(
-    partial_decryptions: list[PartialDecrypted],
+    partial_decryptions: list[types.PartialDecryption],
     secret: Secret,
     threshold: int,
     num_of_shares: int,
