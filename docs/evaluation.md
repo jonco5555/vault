@@ -28,6 +28,6 @@ These graphs reveal several important trends:
 
 6. Operation times remain practical for end users. Even under peak load on this constrained hardware setup, the worst-case latency observed was around 8 seconds. This is a reasonable waiting time for a user, especially given that the system was stress-tested on a relatively weak machine.
 
-## Evaluation Summery
+## Evaluation Summary
 
 Overall, the observed performance trends validate the system’s design: storage operations remain lightweight and manager-centric, while retrieval operations naturally incur higher overhead due to their distributed nature. The throughput saturation highlights hardware limitations rather than architectural flaws, suggesting that on more powerful environments the system could scale further. This trade-off between performance and distributed security guarantees appears to be well balanced for the intended use case.
