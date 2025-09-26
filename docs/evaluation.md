@@ -5,30 +5,11 @@ We chose to present latency and throughput graphs to clearly illustrate the syst
 The evaluation was carried out on a MacBook Air equipped with an Apple M2 processor and 8 logical CPUs, with the system running inside a Colima-managed Docker VM. Latency and throughput were measured as functions of the number of system requests, and the results are presented across several configurations with 0, 2, 4, and 8 share servers.
 
 ## Evaluation Results
-### Retrieval Evaluation
 <div style="display: flex; justify-content: center; gap: 20px;">
     <table>
     <tr>
-        <td><img src="assets/evaluation/Retrieval_Latency_Throughput_0_Share_servers.png" width="350"></td>
-        <td><img src="assets/evaluation/Retrieval_Latency_Throughput_2_Share_servers.png" width="350"></td>
-    </tr>
-    <tr>
-        <td><img src="assets/evaluation/Retrieval_Latency_Throughput_4_Share_servers.png" width="350"></td>
-        <td><img src="assets/evaluation/Retrieval_Latency_Throughput_8_Share_servers.png" width="350"></td>
-    </tr>
-    </table>
-</div>
-
-### Storage evaluation
-<div style="display: flex; justify-content: center; gap: 20px;">
-    <table>
-    <tr>
-        <td><img src="assets/evaluation/Storage_Latency_Throughput_0_Share_servers.png" width="350"></td>
-        <td><img src="assets/evaluation/Storage_Latency_Throughput_2_Share_servers.png" width="350"></td>
-    </tr>
-    <tr>
-        <td><img src="assets/evaluation/Storage_Latency_Throughput_4_Share_servers.png" width="350"></td>
-        <td><img src="assets/evaluation/Storage_Latency_Throughput_8_Share_servers.png" width="350"></td>
+        <td><img src="assets/evaluation/Retrieval_Latency_Throughput_Share_servers.png" width="100%"></td>
+        <td><img src="assets/evaluation/Storage_Latency_Throughput_Share_servers.png" width="100%"></td>
     </tr>
     </table>
 </div>
