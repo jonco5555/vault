@@ -47,3 +47,8 @@ This guide provides step-by-step instructions to set up and run the Vault system
 chmod +x ./run_test_case.sh
 ./run_test_case.sh
 ```
+
+## Running Evaluation Example
+```bash
+uv run ./evaluation/run_evaluation.py
+```
