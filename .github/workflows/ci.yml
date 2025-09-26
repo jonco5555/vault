@@ -31,6 +31,15 @@ jobs:
         if: github.event_name == 'pull_request'
         run: uv run --group docs mkdocs build
 
+      - name: Install deps for WeasyPrint
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          apt update
+          apt install -y \
+            libcairo2 libpango-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+
       - name: Upload docs
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          ENABLE_PDF_EXPORT: 1
         run: uv run --group docs mkdocs gh-deploy --force
