@@ -102,7 +102,6 @@ class Manager(ManagerServicer):
             port=setup_master_port,
             setup_unit_port=setup_unit_port,
             db=self._db,
-            docker_image=docker_image,
             server_creds=creds,
             client_creds=self._client_creds,
         )
@@ -263,7 +262,11 @@ class Manager(ManagerServicer):
         public_keys.append(request.user_public_key)
 
         # Create bootstrap
-        bootstrap_server_data = await self._setup_master_service.spawn_bootstrap_server(
+        bootstrap_server_data = await self._setup_master_service.spawn_server(
+            image=self._docker_image,
+            container_name=f"vault-bootstrap-{request.user_id}",
+            command="vault bootstrap",
+            network="vault-net",
             environment={
                 "PORT": self._bootstrap_port,
                 "SETUP_UNIT_PORT": self._setup_unit_port,
@@ -271,7 +274,7 @@ class Manager(ManagerServicer):
                 "SETUP_MASTER_PORT": self._setup_master_port,
                 "CA_CERT_PATH": self._ca_cert_path,
                 "CA_KEY_PATH": self._ca_key_path,
-            }
+            },
         )
         bootstrap_address = (
             f"{bootstrap_server_data.container_name}:{self._bootstrap_port}"
@@ -382,9 +385,13 @@ class Manager(ManagerServicer):
         for i in range(self._num_of_share_servers):
             self._logger.info(f"creating share server number {i}")
             self._share_servers_data.append(
-                await self._setup_master_service.spawn_share_server(
-                    environment=environment
-                )
+                await self._setup_master_service.spawn_server(
+                    image=self._docker_image,
+                    container_name=f"vault-share-{i}",
+                    command="vault share-server",
+                    network="vault-net",
+                    environment=environment,
+                ),
             )
         # TODO: make paralel and by not blocking on each share server and sample the db.
 
