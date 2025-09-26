@@ -11,19 +11,7 @@ from vault.common.generated.vault_pb2 import (
 )
 from vault.common.generated.vault_pb2_grpc import BootstrapStub
 from vault.common.types import Key
-from vault.crypto.asymmetric import decrypt, generate_key_pair
-
-
-@pytest.fixture
-def key_pairs(request) -> tuple[list[bytes], list[bytes]]:
-    n = request.param
-    privates = []
-    publics = []
-    for i in range(n):
-        priv, pub = generate_key_pair()
-        privates.append(priv)
-        publics.append(pub)
-    return privates, publics
+from vault.crypto.asymmetric import decrypt
 
 
 @pytest.fixture

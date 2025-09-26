@@ -16,7 +16,6 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         port: int,
         setup_unit_port: int,
         db: DBManager,
-        docker_image: str,
         server_creds: grpc.ServerCredentials,
         client_creds: grpc.ChannelCredentials,
     ):
@@ -29,7 +28,6 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
 
         self._port = port
         self._setup_unit_port = setup_unit_port
-        self._docker_image = docker_image
         self._client_creds = client_creds
 
         # grpc server
@@ -37,8 +35,6 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         setup_pb2_grpc.add_SetupMasterServicer_to_server(self, self._server)
         self._server.add_secure_port(f"[::]:{self._port}", server_creds)
 
-        self.bootstrap_idx = 0
-        self.share_server_idx = 0
         self._ready = False
 
     async def start(self):
@@ -72,43 +68,26 @@ class SetupMaster(setup_pb2_grpc.SetupMaster):
         return setup_pb2.SetupUnregisterResponse(is_unregistered=is_unregistered)
 
     # API methods
-    # TODO: combine spawn_bootstrap_server and spawn_share_server into spawn_service and get parameters from manager
-    async def spawn_bootstrap_server(
-        self, block: bool = True, environment: dict = {}
-    ) -> types.ServiceData:
-        # TODO: Bootstrap does not need a counting index, it can has a uuid and should be removed from the DB when finishes
-        self.bootstrap_idx += 1
-        print("spawn_container", flush=True)
+    async def spawn_server(
+        self,
+        image: str,
+        container_name: str = None,
+        command: str = None,
+        network: str = None,
+        environment: dict = {},
+        block: bool = True,
+    ):
         container = docker_utils.spawn_container(
-            self._docker_image,
-            container_name=f"vault-bootstrap-{self.bootstrap_idx}",
-            command="vault bootstrap",
-            network="vault-net",
-            environment=environment,
-        )
-        service_data = None
-        if block:
-            print("waiting for bootstrap registration", flush=True)
-            service_data: types.ServiceData = (
-                await self._wait_for_container_id_registration(container.short_id)
-            )
-        return service_data
-
-    async def spawn_share_server(
-        self, block: bool = True, environment: dict = {}
-    ) -> types.ServiceData:
-        self.share_server_idx += 1
-        container = docker_utils.spawn_container(
-            self._docker_image,
-            container_name=f"vault-share-{self.share_server_idx}",
-            command="vault share-server",
-            network="vault-net",
+            image,
+            container_name=container_name,
+            command=command,
+            network=network,
             environment=environment,
         )
 
         service_data = None
         if block:
-            print("waiting for share server registration", flush=True)
+            print(f"waiting for {container_name} registration", flush=True)
             service_data: types.ServiceData = (
                 await self._wait_for_container_id_registration(container.short_id)
             )

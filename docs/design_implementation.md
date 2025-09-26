@@ -72,6 +72,7 @@ The retrieval flow ensures that secrets can only be reconstructed by the legitim
 4.
     - The manager sends the encrypted secret to all the registered share servers.
     - Each share server uses its locally stored secret share to produce a partially decrypted secret corresponding to the requested secret.
+    - Each share server encrypts the partial decryption with the user's public key.
     - Each share server returns its partial decryption to the manager.
 5. The manager sends all the partial decryptions and the encrypted secret to the user. Importantly, the manager does not possess the ability to complete the reconstruction on its own — it can only serve as a coordinator.
 6. The user produces its own partial decryption using its locally stored share, and combines it with the partial decryptions received from the share servers to fully reconstruct the original secret.

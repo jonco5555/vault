@@ -1,27 +1,28 @@
 import logging
 from typing import Union
+
 import grpc
 
 from vault.common.generated.vault_pb2 import (
+    InnerRequest,
+    InnerResponse,
     RegisterRequest,
     RegisterResponse,
     RetrieveSecretRequest,
     RetrieveSecretResponse,
-    StoreSecretRequest,
-    StoreSecretResponse,
     SecureReqMsgWrapper,
     SecureRespMsgWrapper,
     SRPFirstStep,
     SRPThirdStep,
-    InnerRequest,
-    InnerResponse,
+    StoreSecretRequest,
+    StoreSecretResponse,
 )
 from vault.common.generated.vault_pb2_grpc import ManagerStub
-from vault.common.types import Key
+from vault.common.types import Key, PartialDecryption
 from vault.crypto import asymmetric, certs, threshold
 from vault.crypto.authentication import (
-    srp_registration_client_generate_data,
     srp_authentication_client_step_two,
+    srp_registration_client_generate_data,
 )
 
 logging.basicConfig(
@@ -193,7 +194,6 @@ class User:
         return response.success
 
     async def retrieve_secret(self, password: str, secret_id: str) -> str | None:
-        # TODO: Do the user really needs to save secret_ids?
         if secret_id not in self._secrets_ids:
             print(f"Secret ID {secret_id} not found for user {self._user_id}")
             return None
@@ -206,7 +206,7 @@ class User:
             ),
         )
 
-        if not response.partial_decryptions:
+        if not response.encrypted_partial_decryptions:
             print(f"Failed to retrieve secret {secret_id} for user {self._user_id}")
             return None
 
@@ -215,8 +215,13 @@ class User:
         )
         partial_decrypted = threshold.partial_decrypt(response.secret, share)
 
-        list_partially_decrypted = [partial_decrypted]
-        list_partially_decrypted.extend(response.partial_decryptions)
+        list_partially_decrypted = [
+            PartialDecryption.model_validate_json(
+                asymmetric.decrypt(encrypted_partial_decrypted, self._privkey_b64)
+            )
+            for encrypted_partial_decrypted in response.encrypted_partial_decryptions
+        ]
+        list_partially_decrypted.append(partial_decrypted)
 
         decrypted_secret = threshold.decrypt(
             list_partially_decrypted,

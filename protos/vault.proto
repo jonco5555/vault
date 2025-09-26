@@ -104,7 +104,7 @@ message RetrieveSecretRequest {
 }
 
 message RetrieveSecretResponse {
-    repeated PartialDecrypted partial_decryptions = 1;
+    repeated bytes encrypted_partial_decryptions = 1;
     Secret secret = 2;
 }
 
@@ -149,8 +149,9 @@ message DeleteShareResponse {
 message DecryptRequest {
     string user_id = 1;
     Secret secret = 2;
+    bytes user_public_key = 3;
 }
 
 message DecryptResponse {
-    PartialDecrypted partial_decrypted_secret = 1;
+    bytes encrypted_partial_decryption = 1;
 }

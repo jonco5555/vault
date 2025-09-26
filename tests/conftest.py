@@ -5,6 +5,7 @@ import pytest_asyncio
 from testcontainers.postgres import PostgresContainer
 
 from vault.common.generated.vault_pb2 import Key, Secret
+from vault.crypto.asymmetric import generate_key_pair
 
 
 @pytest.fixture
@@ -23,3 +24,15 @@ def secret() -> Secret:
     return Secret(
         c1=Key(x="1234", y="2345"), c2=Key(x="3456", y="4567"), ciphertext=b"ciphertext"
     )
+
+
+@pytest.fixture
+def key_pairs(request) -> tuple[list[bytes], list[bytes]]:
+    n = request.param
+    privates = []
+    publics = []
+    for i in range(n):
+        priv, pub = generate_key_pair()
+        privates.append(priv)
+        publics.append(pub)
+    return privates, publics
