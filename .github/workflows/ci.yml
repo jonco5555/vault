@@ -34,8 +34,8 @@ jobs:
       - name: Install deps for WeasyPrint
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          apt update
-          apt install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
             libcairo2 libpango-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
 
       - name: Upload docs
