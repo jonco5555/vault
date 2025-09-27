@@ -4,6 +4,15 @@
   <img src="assets/logo.png" alt="logo" width="75%" height="auto">
 </div>
 
+## Public Gethub Repository link
+https://github.com/jonco5555/vault
+
+## Public Documentation link - Highly recommended instead of reading the pdf
+Contains the same content as this pdf, but more convenient.
+
+https://jonco5555.github.io/vault
+
+
 # The Problem space
 In modern digital systems, protecting sensitive information such as cryptographic keys, credentials, and personal data is a critical challenge. Secrets are often stored and accessed remotely, which raises the risk that a single server compromise can expose the entire dataset. At the same time, authorized users must be able to reliably retrieve these secrets without excessive complexity or performance overhead. This tension between security, availability, and usability defines the core problem space.
 
