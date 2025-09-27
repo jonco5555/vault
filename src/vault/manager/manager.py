@@ -60,6 +60,9 @@ class Manager(ManagerServicer):
         bootstrap_port: int,
         share_server_port: int,
         docker_image: str,
+        docker_network: str,
+        bootstrap_command: str,
+        share_server_command: str,
         ca_cert_path: str = "certs/ca.crt",
         ca_key_path: str = "certs/ca.key",
     ):
@@ -80,6 +83,9 @@ class Manager(ManagerServicer):
         self._bootstrap_port = bootstrap_port
         self._share_server_port = share_server_port
         self._docker_image = docker_image
+        self._docker_network = docker_network
+        self._bootstrap_command = bootstrap_command
+        self._share_server_command = share_server_command
         self._ca_cert_path = ca_cert_path
         self._ca_key_path = ca_key_path
 
@@ -265,8 +271,8 @@ class Manager(ManagerServicer):
         bootstrap_server_data = await self._setup_master_service.spawn_server(
             image=self._docker_image,
             container_name=f"vault-bootstrap-{request.user_id}",
-            command="vault bootstrap",
-            network="vault-net",
+            command=self._bootstrap_command,
+            network=self._docker_network,
             environment={
                 "PORT": self._bootstrap_port,
                 "SETUP_UNIT_PORT": self._setup_unit_port,
@@ -388,8 +394,8 @@ class Manager(ManagerServicer):
                 await self._setup_master_service.spawn_server(
                     image=self._docker_image,
                     container_name=f"vault-share-{i}",
-                    command="vault share-server",
-                    network="vault-net",
+                    command=self._share_server_command,
+                    network=self._docker_network,
                     environment=environment,
                 ),
             )

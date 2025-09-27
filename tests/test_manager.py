@@ -36,6 +36,9 @@ async def manager(db: PostgresContainer) -> typing.AsyncGenerator[Manager, None]
         bootstrap_port=5000,
         share_server_port=5000,
         docker_image="vault",
+        docker_network="vault-network",
+        bootstrap_command="vault bootstrap",
+        share_server_command="vault share-server",
     )
     manager._ready = True
     await manager._db.start()

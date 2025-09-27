@@ -39,6 +39,9 @@ async def main(
     bootstrap_port: int,
     share_server_port: int,
     docker_image: str,
+    docker_network: str,
+    bootstrap_command: str,
+    share_server_command: str,
     ca_cert_path: str,
     ca_key_path: str,
 ):
@@ -57,6 +60,9 @@ async def main(
         bootstrap_port=bootstrap_port,
         share_server_port=share_server_port,
         docker_image=docker_image,
+        docker_network=docker_network,
+        bootstrap_command=bootstrap_command,
+        share_server_command=share_server_command,
         ca_cert_path=ca_cert_path,
         ca_key_path=ca_key_path,
     )

@@ -20,6 +20,9 @@ def manager(
     bootstrap_port: Annotated[int, typer.Option(envvar="BOOTSTRAP_PORT")],
     share_server_port: Annotated[int, typer.Option(envvar="SHARE_SERVER_PORT")],
     docker_image: Annotated[str, typer.Option(envvar="DOCKER_IMAGE")],
+    docker_network: Annotated[str, typer.Option(envvar="DOCKER_NETWORK")],
+    bootstrap_command: Annotated[str, typer.Option(envvar="BOOTSTRAP_COMMAND")],
+    share_server_command: Annotated[str, typer.Option(envvar="SHARE_SERVER_COMMAND")],
     ca_cert_path: Annotated[str, typer.Option(envvar="CA_CERT_PATH")],
     ca_key_path: Annotated[str, typer.Option(envvar="CA_KEY_PATH")],
 ):
@@ -39,6 +42,9 @@ def manager(
             bootstrap_port=bootstrap_port,
             share_server_port=share_server_port,
             docker_image=docker_image,
+            docker_network=docker_network,
+            bootstrap_command=bootstrap_command,
+            share_server_command=share_server_command,
             ca_cert_path=ca_cert_path,
             ca_key_path=ca_key_path,
         )
