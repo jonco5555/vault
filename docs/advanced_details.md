@@ -39,59 +39,28 @@ Moreover, this infrastructure allows us to send critical data on setup, such as 
 Building on this infrastructure, we also used the same master-unit architecture to orchestrate the long-lived share servers. By leveraging the established orchestration system, we can manage server deployment, registration, and coordination in a consistent and secure manner, reducing operational complexity while maintaining robust control over the threshold cryptography environment.
 The following is a diagram of the setup flow, defined in the `setup.proto` file and implemented in [`setup_master.py`](/vault/reference/vault/manager/setup_master/) and [`setup_unit.py`](/vault/reference/vault/common/setup_unit/) files:
 
-```mermaid
-sequenceDiagram
-    participant SetupMaster
-    participant SetupUnit
-
-    SetupMaster -->> SetupUnit: SetupMaster creates SetupUnit's docker
-    Note over SetupMaster: SetupMaster waits for SetupUnit to<br/>register with `SetupRegister` call
-
-    SetupUnit ->> SetupMaster: SetupRegister (grpc)
-
-    Note over SetupUnit: SetupUnit can do any server work<br/>until `Terminate` call
-
-    Note over SetupMaster: When SetupMaster want to terminate SetupUnit<br/>it sends `Terminate` call and waits for<br/>`SetupUnregister` call
-
-    SetupMaster ->> SetupUnit: Terminate (grpc)
-    Note over SetupUnit: SetupUnit starting gracefull termination that<br/>will end with `SetupUnregister` call
-    SetupUnit ->> SetupMaster: SetupUnregister (grpc)
-
-```
-![Setup](assets/setup.excalidraw.png)
+<div style="display: flex; gap: 20px;">
+    <div style="flex: 1;">
+        <img src="assets/setup.mermaid-1.png" style="width: 100%;">
+    </div>
+    <div style="flex: 1;">
+        <img src="assets/setup.excalidraw.png" style="width: 100%;">
+    </div>
+</div>
 
 ## Authentication
-In our project, we adopted the Secure Remote Password (SRP)[https://docs.google.com/document/d/1Z_EgpF2yrcV5xSO_4sjh6dfhYhVUcTOu5AaIe-tk5Ko/edit?pli=1&tab=t.0#heading=h.sjijkwvh5cni] protocol as the primary authentication mechanism. SRP is a password-authenticated key exchange (PAKE) that allows a client and server to establish a shared session key without ever transmitting the password itself. The protocol begins with a registration stage, where the client generates a password verifier and salt, which are then stored by the server. During the authentication stage, the client and server exchange public values derived from their secrets, process the salt and verifier, and independently compute a session key that only matches if the password is correct.
+In our project, we adopted the Secure Remote Password (SRP) protocol as the primary authentication mechanism.
+SRP is a password-authenticated key exchange (PAKE) that allows a client and server to establish a shared session key without ever transmitting the password itself. The protocol begins with a registration stage, where the client generates a password verifier and salt, which are then stored by the server. During the authentication stage, the client and server exchange public values derived from their secrets, process the salt and verifier, and independently compute a session key that only matches if the password is correct.
 We implemented this flow over gRPC using its streaming feature, enabling a sequence of secure message exchanges between the client and server during authentication.
+
+SRP Reference:
+T. Wu, “The Secure Remote Password Protocol,” in Proc. Internet Society Network and Distributed System Security Symposium (NDSS), San Diego, CA, USA, 1998.
 
 The following is a diagram of the registration and authentication flow, defined in the `vault.proto` file and the main interface of the Manager gRPC service. The implementation is in `authentication.py`, `manager.py` and `user.py` files:
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server
-
-    opt Registration
-        Note over Client: Choosing a Username and asecret password.<br/>generating a password verifier and a salt.
-        Client ->> Server: AuthRegister (username, verifier, salt)
-        Note over Server: Store verifier and a salt.
-    end
-
-
-    opt Secure call
-        Note over Client,Server: First do the SRP handshake and verification.
-        Client ->> Server: SecureCall::SRPFirstStep (username)
-        Server ->> Client: SecureCall::SRPSecondStep (server_public, salt)
-        Client ->> Server: SecureCall::SRPThirdStep (client_public, client_session_key_proof)
-        Server ->> Client: SecureCall::SRPThirdStepAck (is_authenticated)
-
-        Note over Client,Server: Authenticated, now we can make a grpc call.
-        Client ->> Server: SecureCall::AppRequest
-        Server ->> Client: SecureCall::AppResponse
-    end
-
-```
-
+<div style="text-align: center;">
+  <img src="assets/authentication.mermaid-1.png" alt="authentication" width="70%" height="auto">
+</div>
 
 We designed our product such that every application request (Store secret and Retrieve secret) will have to re-authenticate using the selected password.
 The “AppRequest” and “AppResponse” from the diagram above are a wrapper for all possible grpc application requests messages.
