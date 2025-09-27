@@ -120,5 +120,28 @@ def user(
     )
 
 
+@app.command()
+def evaluation_user(
+    user_id: Annotated[str, typer.Option(envvar="USER_ID")],
+    server_ip: Annotated[str, typer.Option(envvar="SERVER_IP")],
+    server_port: Annotated[int, typer.Option(envvar="SERVER_PORT")],
+    threshold: Annotated[int, typer.Option(envvar="THRESHOLD")],
+    num_of_total_shares: Annotated[int, typer.Option(envvar="TOTAL_SHARES")],
+    ca_cert_path: Annotated[str, typer.Option(envvar="CA_CERT_PATH")],
+):
+    from vault.user.evaluation import main
+
+    asyncio.run(
+        main(
+            user_id=user_id,
+            server_ip=server_ip,
+            server_port=server_port,
+            threshold=threshold,
+            num_of_total_shares=num_of_total_shares,
+            ca_cert_path=ca_cert_path,
+        )
+    )
+
+
 if __name__ == "__main__":
     app(prog_name="vault-cli")

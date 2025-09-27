@@ -64,7 +64,7 @@ sequenceDiagram
 In our project, we adopted the Secure Remote Password (SRP)[https://docs.google.com/document/d/1Z_EgpF2yrcV5xSO_4sjh6dfhYhVUcTOu5AaIe-tk5Ko/edit?pli=1&tab=t.0#heading=h.sjijkwvh5cni] protocol as the primary authentication mechanism. SRP is a password-authenticated key exchange (PAKE) that allows a client and server to establish a shared session key without ever transmitting the password itself. The protocol begins with a registration stage, where the client generates a password verifier and salt, which are then stored by the server. During the authentication stage, the client and server exchange public values derived from their secrets, process the salt and verifier, and independently compute a session key that only matches if the password is correct.
 We implemented this flow over gRPC using its streaming feature, enabling a sequence of secure message exchanges between the client and server during authentication.
 
-The following is a diagram of the registration and authentication flow, defined in the `auth.proto` file and implemented in `authenticatiom.py`, `auth_server.py` and `auth_client.py` files:
+The following is a diagram of the registration and authentication flow, defined in the `vault.proto` file and the main interface of the Manager gRPC service. The implementation is in `authentication.py`, `manager.py` and `user.py` files:
 
 ```mermaid
 sequenceDiagram
