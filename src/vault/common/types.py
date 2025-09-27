@@ -42,3 +42,8 @@ def SetupRegisterRequest_to_ServiceData(
 class Key(BaseModel):
     x: str
     y: str
+
+
+class PartialDecryption(BaseModel):
+    x: str
+    yc1: Key

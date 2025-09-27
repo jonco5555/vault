@@ -1,5 +1,3 @@
-#version: '3.8' # Specify the Docker Compose file format version
-
 services:
   postgres:
     image: postgres:16
@@ -37,6 +35,9 @@ services:
       BOOTSTRAP_PORT: 5000
       SHARE_SERVER_PORT: 5000
       DOCKER_IMAGE: vault
+      DOCKER_NETWORK: vault-net
+      BOOTSTRAP_COMMAND: "vault bootstrap"
+      SHARE_SERVER_COMMAND: "vault share-server"
       CA_CERT_PATH: /app/certs/ca.crt
       CA_KEY_PATH: /app/certs/ca.key
     depends_on:

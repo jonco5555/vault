@@ -11,12 +11,11 @@ from vault.common.generated import vault_pb2 as pb2
 from vault.common.generated.vault_pb2 import (
     DESCRIPTOR,
     DecryptRequest,
-    PartialDecrypted,
     Secret,
     StoreShareRequest,
 )
 from vault.common.generated.vault_pb2_grpc import ShareServerStub
-from vault.crypto.asymmetric import encrypt
+from vault.crypto.asymmetric import decrypt, encrypt
 from vault.share_server.share_server import ShareServer
 
 
@@ -56,8 +55,8 @@ def partial_decrypt_mocker():
     with patch(
         "vault.share_server.share_server.partial_decrypt"
     ) as mock_partial_decrypt:
-        mock_partial_decrypt.return_value = PartialDecrypted(
-            x="123", yc1=pb2.Key(x="456", y="789")
+        mock_partial_decrypt.return_value = types.PartialDecryption(
+            x="123", yc1=types.Key(x="456", y="789")
         )
         yield mock_partial_decrypt
         mock_partial_decrypt.assert_called_once()
@@ -70,7 +69,7 @@ def store_request(user_id, share, server):
 
 
 @pytest.fixture
-def decrypt_request(user_id):
+def decrypt_request(user_id, key_pairs):
     return DecryptRequest(
         user_id=user_id,
         secret=Secret(
@@ -78,6 +77,7 @@ def decrypt_request(user_id):
             c2=pb2.Key(x="123", y="456"),
             ciphertext=b"ciphertext",
         ),
+        user_public_key=key_pairs[1][0],
     )
 
 
@@ -111,12 +111,17 @@ async def test_store_share_success(share_server: _Server, store_request):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("key_pairs", [1], indirect=True)
 async def test_decrypt_success_with_mocked_share_server(
     share_server: _Server,
     store_request,
     partial_decrypt_mocker,
     decrypt_request,
+    key_pairs,
 ):
+    # Arrange
+    priv = key_pairs[0][0]
+
     # Act
     # Store first
     store_response = await invoke_method(store_request, share_server, "StoreShare")[0]
@@ -127,7 +132,10 @@ async def test_decrypt_success_with_mocked_share_server(
 
     # Assert
     assert code == grpc.StatusCode.OK
-    assert response.partial_decrypted_secret is not None
+    assert response.encrypted_partial_decryption is not None
+    types.PartialDecryption.model_validate_json(
+        decrypt(response.encrypted_partial_decryption, priv)
+    )
 
 
 @pytest.mark.asyncio
@@ -145,19 +153,27 @@ async def test_store_share_raises_exception_when_user_exists(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("key_pairs", [1], indirect=True)
 async def test_decrypt_success(
-    share_server_stub, store_request, partial_decrypt_mocker, decrypt_request
+    share_server_stub, store_request, partial_decrypt_mocker, decrypt_request, key_pairs
 ):
+    # Arrange
+    priv = key_pairs[0][0]
+
     # Act
     store_response = await share_server_stub.StoreShare(store_request)
     assert store_response.success
     decrypt_response = await share_server_stub.Decrypt(decrypt_request)
 
     # Assert
-    assert decrypt_response.partial_decrypted_secret is not None
+    assert decrypt_response.encrypted_partial_decryption is not None
+    types.PartialDecryption.model_validate_json(
+        decrypt(decrypt_response.encrypted_partial_decryption, priv)
+    )
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("key_pairs", [1], indirect=True)
 async def test_decrypt_not_found(share_server_stub, decrypt_request):
     # Act
     with pytest.raises(grpc.aio.AioRpcError) as exc_info:

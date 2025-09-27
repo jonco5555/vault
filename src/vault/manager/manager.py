@@ -9,22 +9,21 @@ from vault.common.generated.vault_pb2 import (
     DecryptResponse,
     GenerateSharesRequest,
     GenerateSharesResponse,
-    PartialDecrypted,
+    InnerRequest,
+    InnerResponse,
     RegisterRequest,
     RegisterResponse,
-    RetrieveSecretResponse,
     RetrieveSecretRequest,
+    RetrieveSecretResponse,
     Secret,
-    StoreSecretRequest,
-    StoreSecretResponse,
-    StoreShareRequest,
-    StoreShareResponse,
     SecureReqMsgWrapper,
     SecureRespMsgWrapper,
     SRPSecondStep,
     SRPThirdStepAck,
-    InnerRequest,
-    InnerResponse,
+    StoreSecretRequest,
+    StoreSecretResponse,
+    StoreShareRequest,
+    StoreShareResponse,
 )
 from vault.common.generated.vault_pb2_grpc import (
     BootstrapStub,
@@ -32,14 +31,13 @@ from vault.common.generated.vault_pb2_grpc import (
     ShareServerStub,
     add_ManagerServicer_to_server,
 )
-from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
-from vault.manager.db_manager import DBManager
-from vault.manager.setup_master import SetupMaster
 from vault.crypto.authentication import (
     srp_authentication_server_step_one,
     srp_authentication_server_step_three,
 )
-
+from vault.crypto.certs import generate_component_cert_and_key, load_ca_cert
+from vault.manager.db_manager import DBManager
+from vault.manager.setup_master import SetupMaster
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -62,6 +60,9 @@ class Manager(ManagerServicer):
         bootstrap_port: int,
         share_server_port: int,
         docker_image: str,
+        docker_network: str,
+        bootstrap_command: str,
+        share_server_command: str,
         ca_cert_path: str = "certs/ca.crt",
         ca_key_path: str = "certs/ca.key",
     ):
@@ -82,6 +83,9 @@ class Manager(ManagerServicer):
         self._bootstrap_port = bootstrap_port
         self._share_server_port = share_server_port
         self._docker_image = docker_image
+        self._docker_network = docker_network
+        self._bootstrap_command = bootstrap_command
+        self._share_server_command = share_server_command
         self._ca_cert_path = ca_cert_path
         self._ca_key_path = ca_key_path
 
@@ -104,7 +108,6 @@ class Manager(ManagerServicer):
             port=setup_master_port,
             setup_unit_port=setup_unit_port,
             db=self._db,
-            docker_image=docker_image,
             server_creds=creds,
             client_creds=self._client_creds,
         )
@@ -265,7 +268,11 @@ class Manager(ManagerServicer):
         public_keys.append(request.user_public_key)
 
         # Create bootstrap
-        bootstrap_server_data = await self._setup_master_service.spawn_bootstrap_server(
+        bootstrap_server_data = await self._setup_master_service.spawn_server(
+            image=self._docker_image,
+            container_name=f"vault-bootstrap-{request.user_id}",
+            command=self._bootstrap_command,
+            network=self._docker_network,
             environment={
                 "PORT": self._bootstrap_port,
                 "SETUP_UNIT_PORT": self._setup_unit_port,
@@ -273,7 +280,7 @@ class Manager(ManagerServicer):
                 "SETUP_MASTER_PORT": self._setup_master_port,
                 "CA_CERT_PATH": self._ca_cert_path,
                 "CA_KEY_PATH": self._ca_key_path,
-            }
+            },
         )
         bootstrap_address = (
             f"{bootstrap_server_data.container_name}:{self._bootstrap_port}"
@@ -326,8 +333,6 @@ class Manager(ManagerServicer):
         )
         self._validate_server_ready()
         await self._validate_user_exists(request.user_id)
-
-        # TODO: make sure .proto Secret is saved correctly in the DB
         await self._db.add_secret(
             request.user_id, request.secret_id, request.secret.SerializeToString()
         )
@@ -352,18 +357,26 @@ class Manager(ManagerServicer):
 
         # Get partial decryptions from share servers
         servers_addresses = await self._db.get_servers_addresses()
-        partial_decryptions: list[PartialDecrypted] = []
+        encrypted_partial_decryptions: list[bytes] = []
         for server_address in servers_addresses:
             async with grpc.aio.secure_channel(
                 f"{server_address}:{self._share_server_port}", self._client_creds
             ) as channel:
                 stub = ShareServerStub(channel)
                 response: DecryptResponse = await stub.Decrypt(
-                    DecryptRequest(user_id=request.user_id, secret=secret)
+                    DecryptRequest(
+                        user_id=request.user_id,
+                        secret=secret,
+                        user_public_key=await self._db.get_user_public_key(
+                            request.user_id
+                        ),
+                    )
                 )
-                partial_decryptions.append(response.partial_decrypted_secret)
+                encrypted_partial_decryptions.append(
+                    response.encrypted_partial_decryption
+                )
         return RetrieveSecretResponse(
-            partial_decryptions=partial_decryptions, secret=secret
+            encrypted_partial_decryptions=encrypted_partial_decryptions, secret=secret
         )
 
     async def launch_all_share_servers(self):
@@ -378,11 +391,14 @@ class Manager(ManagerServicer):
         for i in range(self._num_of_share_servers):
             self._logger.info(f"creating share server number {i}")
             self._share_servers_data.append(
-                await self._setup_master_service.spawn_share_server(
-                    environment=environment
-                )
+                await self._setup_master_service.spawn_server(
+                    image=self._docker_image,
+                    container_name=f"vault-share-{i}",
+                    command=self._share_server_command,
+                    network=self._docker_network,
+                    environment=environment,
+                ),
             )
-
         # TODO: make paralel and by not blocking on each share server and sample the db.
 
     async def terminate_all_share_servers(self):
@@ -391,7 +407,6 @@ class Manager(ManagerServicer):
                 f"terminating share server with container id {share_server_data.container_id}"
             )
             await self._setup_master_service.terminate_service(share_server_data)
-
         # TODO: make paralel and by not blocking on each share server and sample the db.
 
     # private methdods

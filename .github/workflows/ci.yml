@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libcairo2 libpango-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+            libcairo2 libpango-1.0-0 libgdk-pixbuf2.0-0 libpangoft2-1.0-0 libffi-dev shared-mime-info
 
       - name: Upload docs
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
