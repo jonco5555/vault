@@ -40,28 +40,13 @@ Building on this infrastructure, we also used the same master-unit architecture 
 The following is a diagram of the setup flow, defined in the `setup.proto` file and implemented in [`setup_master.py`](/vault/reference/vault/manager/setup_master/) and [`setup_unit.py`](/vault/reference/vault/common/setup_unit/) files:
 
 <div style="display: flex; gap: 20px;">
-<div class="mermaid" style="flex: 1;">
-    sequenceDiagram
-        participant SetupMaster
-        participant SetupUnit
-
-        SetupMaster -->> SetupUnit: SetupMaster creates SetupUnit's docker
-        Note over SetupMaster: SetupMaster waits for SetupUnit to<br/>register with `SetupRegister` call
-
-        SetupUnit ->> SetupMaster: SetupRegister (grpc)
-
-        Note over SetupUnit: SetupUnit can do any server work<br/>until `Terminate` call
-
-        Note over SetupMaster: When SetupMaster want to terminate SetupUnit<br/>it sends `Terminate` call and waits for<br/>`SetupUnregister` call
-
-        SetupMaster ->> SetupUnit: Terminate (grpc)
-        Note over SetupUnit: SetupUnit starting gracefull termination that<br/>will end with `SetupUnregister` call
-        SetupUnit ->> SetupMaster: SetupUnregister (grpc)
-  </div>
+    <div style="flex: 1;">
+        <img src="assets/setup.mermaid-1.png" style="width: 100%;">
+    </div>
   <!-- PNG image -->
-  <div style="flex: 1;">
-    <img src="assets/setup.excalidraw.png" style="width: 100%;">
-  </div>
+    <div style="flex: 1;">
+        <img src="assets/setup.excalidraw.png" style="width: 100%;">
+    </div>
 </div>
 
 ## Authentication
@@ -70,29 +55,8 @@ We implemented this flow over gRPC using its streaming feature, enabling a seque
 
 The following is a diagram of the registration and authentication flow, defined in the `vault.proto` file and the main interface of the Manager gRPC service. The implementation is in `authentication.py`, `manager.py` and `user.py` files:
 
-<div class="mermaid" style="width: 50%; margin: 0 auto;">
-sequenceDiagram
-    participant Client
-    participant Server
-
-    opt Registration
-        Note over Client: Choosing a Username and asecret password.<br/>generating a password verifier and a salt.
-        Client ->> Server: AuthRegister (username, verifier, salt)
-        Note over Server: Store verifier and a salt.
-    end
-
-
-    opt Secure call
-        Note over Client,Server: First do the SRP handshake and verification.
-        Client ->> Server: SecureCall::SRPFirstStep (username)
-        Server ->> Client: SecureCall::SRPSecondStep (server_public, salt)
-        Client ->> Server: SecureCall::SRPThirdStep (client_public, client_session_key_proof)
-        Server ->> Client: SecureCall::SRPThirdStepAck (is_authenticated)
-
-        Note over Client,Server: Authenticated, now we can make a grpc call.
-        Client ->> Server: SecureCall::AppRequest
-        Server ->> Client: SecureCall::AppResponse
-    end
+<div style="width: 50%; margin: 0 auto;">
+    <img src="assets/authentication.mermaid-1.png" style="width: 100%;">
 </div>
 
 We designed our product such that every application request (Store secret and Retrieve secret) will have to re-authenticate using the selected password.
