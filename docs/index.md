@@ -1,5 +1,8 @@
-# Vault
-![Vault Logo](assets/logo.png)
+<h1 style="text-align: center;">Vault</h1>
+
+<div style="text-align: center;">
+  <img src="assets/logo.png" alt="logo" width="75%" height="auto">
+</div>
 
 # The Problem space
 In modern digital systems, protecting sensitive information such as cryptographic keys, credentials, and personal data is a critical challenge. Secrets are often stored and accessed remotely, which raises the risk that a single server compromise can expose the entire dataset. At the same time, authorized users must be able to reliably retrieve these secrets without excessive complexity or performance overhead. This tension between security, availability, and usability defines the core problem space.

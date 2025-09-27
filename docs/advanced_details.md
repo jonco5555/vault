@@ -43,20 +43,23 @@ The following is a diagram of the setup flow, defined in the `setup.proto` file 
     <div style="flex: 1;">
         <img src="assets/setup.mermaid-1.png" style="width: 100%;">
     </div>
-  <!-- PNG image -->
     <div style="flex: 1;">
         <img src="assets/setup.excalidraw.png" style="width: 100%;">
     </div>
 </div>
 
 ## Authentication
-In our project, we adopted the Secure Remote Password (SRP)[https://docs.google.com/document/d/1Z_EgpF2yrcV5xSO_4sjh6dfhYhVUcTOu5AaIe-tk5Ko/edit?pli=1&tab=t.0#heading=h.sjijkwvh5cni] protocol as the primary authentication mechanism. SRP is a password-authenticated key exchange (PAKE) that allows a client and server to establish a shared session key without ever transmitting the password itself. The protocol begins with a registration stage, where the client generates a password verifier and salt, which are then stored by the server. During the authentication stage, the client and server exchange public values derived from their secrets, process the salt and verifier, and independently compute a session key that only matches if the password is correct.
+In our project, we adopted the Secure Remote Password (SRP) protocol as the primary authentication mechanism.
+SRP is a password-authenticated key exchange (PAKE) that allows a client and server to establish a shared session key without ever transmitting the password itself. The protocol begins with a registration stage, where the client generates a password verifier and salt, which are then stored by the server. During the authentication stage, the client and server exchange public values derived from their secrets, process the salt and verifier, and independently compute a session key that only matches if the password is correct.
 We implemented this flow over gRPC using its streaming feature, enabling a sequence of secure message exchanges between the client and server during authentication.
+
+SRP Reference:
+T. Wu, “The Secure Remote Password Protocol,” in Proc. Internet Society Network and Distributed System Security Symposium (NDSS), San Diego, CA, USA, 1998.
 
 The following is a diagram of the registration and authentication flow, defined in the `vault.proto` file and the main interface of the Manager gRPC service. The implementation is in `authentication.py`, `manager.py` and `user.py` files:
 
-<div style="width: 50%; margin: 0 auto;">
-    <img src="assets/authentication.mermaid-1.png" style="width: 100%;">
+<div style="text-align: center;">
+  <img src="assets/authentication.mermaid-1.png" alt="authentication" width="70%" height="auto">
 </div>
 
 We designed our product such that every application request (Store secret and Retrieve secret) will have to re-authenticate using the selected password.
