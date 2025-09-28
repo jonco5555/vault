@@ -2,10 +2,7 @@
 
 ## Overview
 The project consists of several interacting components designed to securely store and retrieve user secrets:
-
-<div style="text-align: center;">
-  <img src="assets/design.excalidraw.png" alt="Design Diagram" width="70%" height="auto">
-</div>
+![Design](assets/design.excalidraw.png){width=70%}
 
 The `User` is the client of the password manager, responsible for registering and authenticating with the system using a password. The user holds the final share of his secret, ensuring that only him can fully reconstruct and access their sensitive data.
 
@@ -28,9 +25,7 @@ The following are details of each of these operations “behind the scenes".
 ### User Registration Flow
 The registration process establishes both authentication credentials and the cryptographic foundation for secure secret storage. It proceeds as follows:
 
-<div style="text-align: center;">
-  <img src="assets/register.excalidraw.png" alt="Registration" width="70%" height="auto">
-</div>
+![Registration](assets/register.excalidraw.png){width=70%}
 
 1. The user begins registration by sending to the manager:
     - Their public end-to-end encryption key (used to protect the user’s own share).
@@ -56,9 +51,7 @@ At the end of registration flow, the system has:
 ### User Secret Storage Flow
 After completing registration, a user can securely store secrets in the system. This flow ensures that the manager only persists encrypted data and never learns the secret’s plaintext.
 
-<div style="text-align: center;">
-  <img src="assets/store.excalidraw.png" alt="Store" width="70%" height="auto">
-</div>
+![Store](assets/store.excalidraw.png){width=70%}
 
 1. The user first authenticates against the manager using the SRP protocol with the password established during registration. This step ensures that only the rightful user can request secret storage.
 2. As part of the registration process, the user received a public encryption key from the manager.
@@ -72,10 +65,7 @@ Because the manager only handles ciphertext, confidentiality is preserved even i
 ### User Secret Retrieval Flow
 The retrieval flow ensures that secrets can only be reconstructed by the legitimate user, leveraging threshold cryptography and SRP-based authentication.
 
-<div style="text-align: center;">
-  <img src="assets/retrieve.excalidraw.png" alt="Retrieve" width="70%" height="auto">
-</div>
-
+![Retrieve](assets/retrieve.excalidraw.png){width=70%}
 
 1. The user first authenticates against the manager using the SRP protocol with the password established during registration. This step ensures that only the rightful user can request secret retrieval.
 2. The user sends the manager the `user_id` and the `secret_id` corresponding to the stored secret.

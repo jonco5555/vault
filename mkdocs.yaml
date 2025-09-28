@@ -4,6 +4,7 @@ nav:
   - Home: index.md
   - Design: design_implementation.md
   - Advanced Details: advanced_details.md
+  - Evaluations: evaluation.md
   - How to run: how_to_run.md
   - Code Reference: reference/
 
@@ -47,18 +48,18 @@ plugins:
       nav_file: SUMMARY.md
   - mkdocstrings
   - section-index
-  - with-pdf:
-      cover_title: Vault
-      cover_subtitle: Distributed Secret Manager. By Ariel Shnits and Yonatan Cohen
-      cover_logo: assets/logo.png
-      output_path: pdf/vault.pdf
-      enabled_if_env: ENABLE_PDF_EXPORT
-      exclude_pages:
-        - 'reference/*'
-  - print-site:
-      print_page_title: Vault
-      exclude:
-        - 'reference/*'
+  # - with-pdf:
+  #     cover_title: Vault
+  #     cover_subtitle: Distributed Secret Manager. By Ariel Shnits and Yonatan Cohen
+  #     cover_logo: assets/logo.png
+  #     output_path: pdf/vault.pdf
+  #     enabled_if_env: ENABLE_PDF_EXPORT
+  #     exclude_pages:
+  #       - 'reference/*'
+  # - print-site:
+  #     print_page_title: Vault
+  #     exclude:
+  #       - 'reference/*'
 markdown_extensions:
   - admonition
   - codehilite
@@ -78,6 +79,7 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - attr_list
 extra:
   social:
     - icon: fontawesome/brands/github

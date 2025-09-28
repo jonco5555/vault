@@ -39,14 +39,7 @@ Moreover, this infrastructure allows us to send critical data on setup, such as 
 Building on this infrastructure, we also used the same master-unit architecture to orchestrate the long-lived share servers. By leveraging the established orchestration system, we can manage server deployment, registration, and coordination in a consistent and secure manner, reducing operational complexity while maintaining robust control over the threshold cryptography environment.
 The following is a diagram of the setup flow, defined in the `setup.proto` file and implemented in [`setup_master.py`](/vault/reference/vault/manager/setup_master/) and [`setup_unit.py`](/vault/reference/vault/common/setup_unit/) files:
 
-<div style="display: flex; gap: 20px;">
-    <div style="flex: 1;">
-        <img src="assets/setup.mermaid-1.png" style="width: 100%;">
-    </div>
-    <div style="flex: 1;">
-        <img src="assets/setup.excalidraw.png" style="width: 100%;">
-    </div>
-</div>
+![Setup Mermaid](assets/setup.mermaid-1.png){width=46.8%}![Setup Excalidraw](assets/setup.excalidraw.png){width=53%}
 
 ## Authentication
 In our project, we adopted the Secure Remote Password (SRP) protocol as the primary authentication mechanism.
@@ -58,9 +51,7 @@ T. Wu, “The Secure Remote Password Protocol,” in Proc. Internet Society Netw
 
 The following is a diagram of the registration and authentication flow, defined in the `vault.proto` file and the main interface of the Manager gRPC service. The implementation is in `authentication.py`, `manager.py` and `user.py` files:
 
-<div style="text-align: center;">
-  <img src="assets/authentication.mermaid-1.png" alt="authentication" width="70%" height="auto">
-</div>
+![Authentication](assets/authentication.mermaid-1.png){width=70%}
 
 We designed our product such that every application request (Store secret and Retrieve secret) will have to re-authenticate using the selected password.
 The “AppRequest” and “AppResponse” from the diagram above are a wrapper for all possible grpc application requests messages.
