@@ -48,18 +48,18 @@ plugins:
       nav_file: SUMMARY.md
   - mkdocstrings
   - section-index
-  # - with-pdf:
-  #     cover_title: Vault
-  #     cover_subtitle: Distributed Secret Manager. By Ariel Shnits and Yonatan Cohen
-  #     cover_logo: assets/logo.png
-  #     output_path: pdf/vault.pdf
-  #     enabled_if_env: ENABLE_PDF_EXPORT
-  #     exclude_pages:
-  #       - 'reference/*'
-  # - print-site:
-  #     print_page_title: Vault
-  #     exclude:
-  #       - 'reference/*'
+  - with-pdf:
+      cover_title: Vault
+      cover_subtitle: Distributed Secret Manager. By Ariel Shnits and Yonatan Cohen
+      cover_logo: assets/logo.png
+      output_path: pdf/vault.pdf
+      enabled_if_env: ENABLE_PDF_EXPORT
+      exclude_pages:
+        - 'reference/*'
+  - print-site:
+      print_page_title: Vault
+      exclude:
+        - 'reference/*'
 markdown_extensions:
   - admonition
   - codehilite

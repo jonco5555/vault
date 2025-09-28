@@ -4,13 +4,13 @@
   <img src="assets/logo.png" alt="logo" width="75%" height="auto">
 </div>
 
-## Public Gethub Repository link
-https://github.com/jonco5555/vault
+## Public Github Repository link
+[https://github.com/jonco5555/vault](https://github.com/jonco5555/vault)
 
 ## Public Documentation link - Highly recommended instead of reading the pdf
 Contains the same content as this pdf, but more convenient.
 
-https://jonco5555.github.io/vault
+[https://jonco5555.github.io/vault](https://jonco5555.github.io/vault)
 
 
 # The Problem space
